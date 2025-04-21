@@ -12,6 +12,13 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 # Import the financial report generator
 from tools.Tool_1_Financial_Report_Generator import generate_financial_report
 
+# Import the personalized financial advisor
+from tools.personalized_financial_advisor import (
+    process_financial_document,
+    get_financial_advice,
+    update_user_preferences
+)
+
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 
@@ -21,7 +28,7 @@ os.makedirs("reports/charts", exist_ok=True)
 
 @app.route('/')
 def root():
-    return jsonify({"message": "Finance RAG API is running"})
+    return jsonify({"message": "Finance RAG Application Server is running"})
 
 @app.route('/generate-stock-report', methods=['POST'])
 def generate_stock_report():
@@ -140,5 +147,63 @@ def run_example():
     except Exception as e:
         return jsonify({"error": f"Error running example: {str(e)}"}), 500
 
+@app.route('/process-document', methods=['POST'])
+def process_document_api():
+    try:
+        data = request.get_json()
+        user_id = data.get('user_id')
+        
+        if 'file' not in request.files:
+            return jsonify({"error": "No file part"}), 400
+            
+        file = request.files['file']
+        
+        if file.filename == '':
+            return jsonify({"error": "No selected file"}), 400
+            
+        # Save uploaded file
+        document_path = f"data/documents/{secure_filename(file.filename)}"
+        os.makedirs(os.path.dirname(document_path), exist_ok=True)
+        file.save(document_path)
+        
+        # Process document
+        result = process_financial_document(document_path, user_id)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": f"Error processing document: {str(e)}"}), 500
+
+@app.route('/get-advice', methods=['POST'])
+def get_advice_api():
+    try:
+        data = request.get_json()
+        query = data.get('query')
+        user_id = data.get('user_id')
+        
+        if not query or not user_id:
+            return jsonify({"error": "Query and user_id are required"}), 400
+            
+        response = get_financial_advice(query, user_id)
+        return jsonify({"response": response})
+    except Exception as e:
+        return jsonify({"error": f"Error getting advice: {str(e)}"}), 500
+
+@app.route('/update-preferences', methods=['POST'])
+def update_preferences_api():
+    try:
+        data = request.get_json()
+        user_id = data.get('user_id')
+        preferences = data.get('preferences')
+        
+        if not user_id or not preferences:
+            return jsonify({"error": "User ID and preferences are required"}), 400
+            
+        updated_profile = update_user_preferences(user_id, preferences)
+        return jsonify({"profile": updated_profile})
+    except Exception as e:
+        return jsonify({"error": f"Error updating preferences: {str(e)}"}), 500
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
+
+
+
