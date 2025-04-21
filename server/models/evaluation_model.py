@@ -3,9 +3,11 @@ from models.llm import OpenRouterLLM
 from typing import Dict, List
 import os
 
-def evaluate_response(response: str, contexts: List[str]) -> Dict:
+def evaluate_response(query: str, response: str, contexts: List[str]) -> Dict:
+    """Evaluate a response against contexts using DeepEval."""
     try:
         results = evaluate(
+            input=query,
             actual_output=response,
             retrieval_context=contexts,
             metrics=["faithfulness", "hallucination"],

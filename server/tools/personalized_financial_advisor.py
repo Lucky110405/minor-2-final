@@ -77,30 +77,41 @@ class PersonalizedFinancialAdvisor:
             self.llm = OpenRouterLLM(api_key=os.getenv("OPENROUTER_GEMMA_API_KEY"), temperature=0.1)
             pc = Pinecone(api_key=os.getenv("PINECONE_API_KEY"))
             index_name = "financial-documents"
+
+            # Check if index exists
+            existing_indexes = pc.list_indexes().names()  # Get list of index names
+            print(f"Existing indexes: {existing_indexes}")
             
             # Create index if it doesn't exist
-            existing_indexes = pc.list_indexes()
             if index_name not in existing_indexes:
-                try:
-                    pc.create_index(
-                        name=index_name,
-                        dimension=768,
-                        metric="cosine"
-                    )
-                    print(f"Created new Pinecone index: {index_name}")
-                except Exception as e:
-                    print(f"Error creating Pinecone index: {str(e)}")
-                    # Continue anyway - index might exist but not be visible
+                print(f"Creating new index: {index_name}")
+                pc.create_index(
+                name=index_name,
+                dimension=768, # Replace with your model dimensions
+                metric="cosine", # Replace with your model metric
+                spec=ServerlessSpec(
+                    cloud="aws",
+                    region="us-east-1"
+                ) 
+            )
+            print(f"Created new Pinecone index: {index_name}")
+            # Wait for index to be ready
+            import time
+            time.sleep(10)
 
             # Connect to index
             self.vector_db = pc.Index(index_name)
+            # Test the connection
+            stats = self.vector_db.describe_index_stats()
+            print(f"Connected to index with stats: {stats}")
+
         except Exception as e:
             print(f"Error setting up Pinecone: {str(e)}")
             raise
 
         try:
             # Neo4j setup with proper error handling
-            self.neo4j_uri = os.getenv("NEO4J_URI", "bolt://localhost:7687")
+            self.neo4j_uri = os.getenv("NEO4J_URI")
             self.neo4j_user = os.getenv("NEO4J_USER", "neo4j")
             self.neo4j_password = os.getenv("NEO4J_PASSWORD")
             
@@ -714,6 +725,7 @@ def generate_response_node(state: FinancialAdvisorState) -> FinancialAdvisorStat
     if state["relevant_contexts"]:
         try:
             evaluation_result = evaluate_response(
+                query=state["query"],
                 response=response, 
                 contexts=state["relevant_contexts"]
             )
@@ -735,6 +747,9 @@ def build_workflow():
     workflow.add_node("retrieve_context", retrieve_context_node)
     workflow.add_node("generate_response", generate_response_node)
     
+    # Add a start node
+    workflow.add_node("start", lambda x: x)  # Identity function as placeholder
+
     # Add conditional edges based on whether we're processing a document or answering a query
     # Routing function determines first step
     def route_based_on_inputs(state: FinancialAdvisorState):
@@ -744,7 +759,7 @@ def build_workflow():
             return "retrieve_context"
     
     # Define edges
-    workflow.add_conditional_edges("", route_based_on_inputs, {
+    workflow.add_conditional_edges("start", route_based_on_inputs, {
         "process_document": "process_document",
         "retrieve_context": "retrieve_context"
     })
@@ -752,6 +767,9 @@ def build_workflow():
     workflow.add_edge("retrieve_context", "generate_response")
     workflow.add_edge("generate_response", END)
     
+    # Set entry point
+    workflow.set_entry_point("start")
+
     return workflow.compile()
 
 # Main functions to expose the functionality

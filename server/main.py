@@ -4,6 +4,10 @@ from tempfile import NamedTemporaryFile
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Add the current directory to the Python path to handle imports
 import sys
@@ -150,8 +154,9 @@ def run_example():
 @app.route('/process-document', methods=['POST'])
 def process_document_api():
     try:
-        data = request.get_json()
-        user_id = data.get('user_id')
+        user_id = request.form.get('user_id')
+        if not user_id:
+            return jsonify({"error": "User ID is required"}), 400
         
         if 'file' not in request.files:
             return jsonify({"error": "No file part"}), 400
