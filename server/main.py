@@ -166,8 +166,8 @@ def process_document_api():
         if file.filename == '':
             return jsonify({"error": "No selected file"}), 400
             
-        # Save uploaded file
-        document_path = f"data/documents/{secure_filename(file.filename)}"
+        # Save uploaded file - FIXED PATH HERE
+        document_path = f"data/documents/{user_id}/{secure_filename(file.filename)}"
         os.makedirs(os.path.dirname(document_path), exist_ok=True)
         file.save(document_path)
         
@@ -183,12 +183,18 @@ def get_advice_api():
         data = request.get_json()
         query = data.get('query')
         user_id = data.get('user_id')
+        document_path = data.get('document_path')
         
         if not query or not user_id:
             return jsonify({"error": "Query and user_id are required"}), 400
-            
-        response = get_financial_advice(query, user_id)
-        return jsonify({"response": response})
+        
+        # Call financial advisor with document context
+        response = get_financial_advice(query, user_id, document_path)
+        
+        return jsonify({
+            "response": response,
+            "sources": []  # Add source extraction logic if needed
+        })
     except Exception as e:
         return jsonify({"error": f"Error getting advice: {str(e)}"}), 500
 
@@ -206,6 +212,35 @@ def update_preferences_api():
         return jsonify({"profile": updated_profile})
     except Exception as e:
         return jsonify({"error": f"Error updating preferences: {str(e)}"}), 500
+
+@app.route('/user-files', methods=['GET'])
+def user_files_api():
+    try:
+        user_id = request.args.get('user_id')
+        if not user_id:
+            return jsonify({"error": "User ID is required"}), 400
+        
+        # Look in multiple possible directories
+        document_paths = [
+            f"data/documents/{user_id}",
+            f"data/chat_documents/{user_id}",
+            f"data/uploaded_files/{user_id}"
+        ]
+        
+        files = []
+        for path in document_paths:
+            if os.path.exists(path):
+                for file_name in os.listdir(path):
+                    file_path = os.path.join(path, file_name)
+                    if os.path.isfile(file_path):
+                        files.append({
+                            "id": file_path,  # Use full path as ID
+                            "name": file_name
+                        })
+                
+        return jsonify({"files": files})
+    except Exception as e:
+        return jsonify({"error": f"Error listing user files: {str(e)}"}), 500
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)

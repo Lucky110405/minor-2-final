@@ -1,47 +1,44 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs';
+import { auth } from '@clerk/nextjs/server';
 
 export async function POST(req: Request) {
   try {
-    const { userId } = auth();
+    const { userId } = await auth();
     if (!userId) {
-      return new NextResponse('Unauthorized', { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const body = await req.json();
-    const { query, documentId } = body;
+    const { query, document_path } = body;
 
-    if (!query || !documentId) {
-      return new NextResponse('Missing required fields', { status: 400 });
+    // Call Flask backend
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/get-advice`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        query,
+        user_id: userId,
+        document_path
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Server responded with ${response.status}`);
     }
 
-    // Here you would typically:
-    // 1. Fetch the document content
-    // 2. Process it with your AI model
-    // 3. Generate advice based on the query and document content
-
-    // For now, we'll return a simulated response
-    const advice = {
-      summary: "Based on your financial documents, here's my advice...",
-      recommendations: [
-        "Consider diversifying your investment portfolio",
-        "Review your monthly expenses",
-        "Look into tax optimization strategies"
-      ],
-      risks: [
-        "Market volatility may affect your investments",
-        "Current interest rates might impact your savings"
-      ],
-      nextSteps: [
-        "Schedule a review of your investment strategy",
-        "Update your budget plan",
-        "Consult with a financial advisor"
-      ]
-    };
-
-    return NextResponse.json(advice);
+    const data = await response.json();
+    
+    // Transform response to match client expectations
+    return NextResponse.json({
+      response: data.response,
+      sources: data.sources || []
+    });
   } catch (error) {
-    console.error('Error in get-advice:', error);
-    return new NextResponse('Internal Server Error', { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to get financial advice" }, 
+      { status: 500 }
+    );
   }
-} 
+}

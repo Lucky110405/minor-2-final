@@ -782,26 +782,21 @@ def process_financial_document(document_path: str, user_id: str) -> Dict:
     advisor = PersonalizedFinancialAdvisor()
     return advisor.process_financial_document(document_path, user_id)  
 
-def get_financial_advice(query: str, user_id: str) -> str:
-    """Get personalized financial advice for a user query"""
+def get_financial_advice(query: str, user_id: str, document_path: str = None) -> str:
+    """Get financial advice based on user query and context"""
+    advisor = PersonalizedFinancialAdvisor()
+    
+    # Initialize state
+    state = {
+        "user_id": user_id,
+        "query": query,
+        "document_path": document_path,  # This could be None if no document specified
+    }
+    
+    # Run workflow
     workflow = build_workflow()
+    result = workflow.invoke(state)
     
-    initial_state = FinancialAdvisorState(
-        user_id=user_id,
-        query=query,
-        document_path=None,  # No document for query answering
-        chunks=None,
-        entities=None,
-        relationships=None,
-        knowledge_graph=None,
-        knowledge_graph_id=None,  # Added this field
-        relevant_contexts=None,
-        relevant_facts=None,
-        user_profile=None,
-        response=None
-    )
-    
-    result = workflow.invoke(initial_state)
     return result["response"]
 
 # Fix 6: Add data validation to update_user_preferences

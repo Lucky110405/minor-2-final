@@ -26,7 +26,7 @@ export default function QueryDocuments() {
   const [query, setQuery] = useState<string>('');
   const [responses, setResponses] = useState<QueryResponse[]>([]);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
-  const [availableFiles, setAvailableFiles] = useState<string[]>([]);
+  const [availableFiles, setAvailableFiles] = useState<Array<{id: string, name: string}>>([]);
 
   useEffect(() => {
     if (isLoaded) {
@@ -52,8 +52,7 @@ export default function QueryDocuments() {
 
   const fetchAvailableFiles = async () => {
     try {
-      // This would be replaced with an actual API call to fetch user's uploaded files
-      const response = await fetch('/api/user-files');
+      const response = await fetch(`/api/user-files`);
       if (response.ok) {
         const data = await response.json();
         setAvailableFiles(data.files || []);
@@ -71,20 +70,26 @@ export default function QueryDocuments() {
     setIsLoading(true);
     
     try {
-      const response = await fetch('/api/query-document', {
+      const response = await fetch('/api/get-advice', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           query,
-          filename: selectedFile,
+          user_id: userId, 
+          document_path: selectedFile
         }),
       });
       
       if (response.ok) {
         const data = await response.json();
-        setResponses(prev => [data, ...prev]);
+        // Convert server response format to client format
+        const formattedResponse = {
+          answer: data.response || "No response received",
+          sources: data.sources || []
+        };
+        setResponses(prev => [formattedResponse, ...prev]);
         setQuery('');
       } else {
         console.error('Query failed');
@@ -125,7 +130,7 @@ export default function QueryDocuments() {
           </div>
           
           <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200 mb-8">
-            Query Documents
+            Financial Assistant
           </h1>
 
           {/* File Selection */}
@@ -140,8 +145,8 @@ export default function QueryDocuments() {
                 className="p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200"
               >
                 <option value="">Select a document</option>
-                {availableFiles.map((file, index) => (
-                  <option key={index} value={file}>{file}</option>
+                {availableFiles.map((file) => (
+                  <option key={file.id} value={file.id}>{file.name}</option>
                 ))}
               </select>
               {selectedFile && (
@@ -179,7 +184,7 @@ export default function QueryDocuments() {
                 ) : (
                   <>
                     <Send className="h-5 w-5" />
-                    <span>Submit Query</span>
+                    <span>Ask</span>
                   </>
                 )}
               </button>
@@ -225,4 +230,4 @@ export default function QueryDocuments() {
       </main>
     </div>
   );
-} 
+}

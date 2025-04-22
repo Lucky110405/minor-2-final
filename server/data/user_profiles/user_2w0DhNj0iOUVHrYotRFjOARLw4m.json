@@ -1,0 +1,21 @@
+{
+  "user_id": "user_2w0DhNj0iOUVHrYotRFjOARLw4m",
+  "risk_tolerance": "moderate",
+  "financial_goals": [
+    "investment",
+    "retirement"
+  ],
+  "investment_horizon": "long-term",
+  "preferences": {
+    "sustainability": 0.5,
+    "technology": 0.35,
+    "healthcare": 0.35
+  },
+  "interaction_history": [
+    {
+      "query": "should i invest in stocks now or not \n",
+      "timestamp": "2025-04-22T09:44:59.994844",
+      "response_summary": "\n\nBased on the information provided, the advice consistently emphasizes the need to closely monitor ..."
+    }
+  ]
+}

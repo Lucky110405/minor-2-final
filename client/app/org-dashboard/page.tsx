@@ -297,7 +297,7 @@ export default function OrgDashboard() {
                 href="/advice"
                 className="inline-block bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 transition-colors"
               >
-                Get Advice
+                Get Financial Assistant Advice
               </Link>
             </div>
 
@@ -310,13 +310,13 @@ export default function OrgDashboard() {
               </p>
               <div className="space-y-2">
                 <Link
-                  href="/dashboard"
+                  href="/generate-reports"
                   className="inline-block w-full bg-indigo-600 text-white px-6 py-2 rounded-md hover:bg-indigo-700 transition-colors text-center"
                 >
                   Data Report
                 </Link>
                 <Link
-                  href="/dashboard"
+                  href="/generate-reports"
                   className="inline-block w-full bg-pink-600 text-white px-6 py-2 rounded-md hover:bg-pink-700 transition-colors text-center"
                 >
                   Stock Report

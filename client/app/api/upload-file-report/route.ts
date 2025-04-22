@@ -1,41 +1,42 @@
 import { NextResponse } from 'next/server';
-import { getAuth } from '@clerk/nextjs/server';
-import { writeFile } from 'fs/promises';
-import { join } from 'path';
+import { auth } from '@clerk/nextjs/server';
 
-export async function POST(request: Request) {
+export async function POST(req: Request) {
   try {
-    const { userId } = getAuth();
-    
+    // Get authenticated user
+    const { userId } = await auth();
     if (!userId) {
-      return new NextResponse('Unauthorized', { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const formData = await request.formData();
-    const file = formData.get('file') as File;
+    // Clone the request to extract the form data
+    const formData = await req.formData();
     
-    if (!file) {
-      return new NextResponse('No file provided', { status: 400 });
+    // Add user_id to the form data
+    formData.append('user_id', userId);
+    
+    // Forward to Flask backend
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/process-document`,
+      {
+        method: 'POST',
+        body: formData,
+      }
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('Server error:', errorData);
+      throw new Error(`Server responded with ${response.status}: ${JSON.stringify(errorData)}`);
     }
 
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-
-    // Create a unique filename
-    const timestamp = Date.now();
-    const filename = `${timestamp}-${file.name}`;
-    
-    // Save the file
-    const path = join(process.cwd(), 'public', 'uploads', filename);
-    await writeFile(path, buffer);
-
-    return NextResponse.json({ 
-      success: true, 
-      filename,
-      message: 'File uploaded successfully' 
-    });
+    const data = await response.json();
+    return NextResponse.json(data);
   } catch (error) {
-    console.error('Upload error:', error);
-    return new NextResponse('Internal Server Error', { status: 500 });
+    console.error('Error in upload-file-report:', error);
+    return NextResponse.json(
+      { error: `Failed to upload file: ${error instanceof Error ? error.message : 'Unknown error'}` },
+      { status: 500 }
+    );
   }
-} 
+}
