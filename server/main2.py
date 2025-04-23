@@ -8,6 +8,9 @@ from dotenv import load_dotenv
 import asyncio
 import logging
 from concurrent.futures import ThreadPoolExecutor
+import json
+from flask_sock import Sock
+import time
 
 # Load environment variables from .env file
 load_dotenv()
@@ -33,12 +36,17 @@ from tools.personalized_financial_advisor import (
 # Import the market trend analyzer
 from tools.market_trend_analyzer import MarketTrendAnalyzer
 
+# Import the real-time queries
+from tools.real_time_queries import RealTimeQueries
+
 # Initialize Flask app
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
+sock = Sock(app)  # Initialize WebSocket support
 
-# Initialize MarketTrendAnalyzer
+# Initialize analyzers
 analyzer = MarketTrendAnalyzer()
+rtq = RealTimeQueries()
 
 # Ensure the reports directory exists
 os.makedirs("reports", exist_ok=True)
@@ -47,15 +55,91 @@ os.makedirs("reports/charts", exist_ok=True)
 # Initialize thread pool for async operations
 thread_pool = ThreadPoolExecutor(max_workers=10)
 
+# WebSocket connections
+active_connections = {}
+
 @app.before_first_request
 async def initialize():
-    """Initialize the analyzer before the first request"""
+    """Initialize the analyzers before the first request"""
     await analyzer.initialize()
+    await rtq.initialize()
 
 @app.teardown_appcontext
 async def cleanup(exception=None):
     """Cleanup resources when the app context is torn down"""
     await analyzer.cleanup()
+    await rtq.cleanup()
+
+# WebSocket endpoint for real-time queries
+@sock.route('/ws')
+def websocket_endpoint(ws):
+    """Handle WebSocket connections for real-time queries"""
+    client_id = id(ws)
+    active_connections[client_id] = ws
+    
+    try:
+        while True:
+            data = ws.receive()
+            try:
+                message = json.loads(data)
+                query = message.get("query", "")
+                
+                # Process the query asynchronously
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                response = loop.run_until_complete(rtq.process_query(query))
+                loop.close()
+                
+                ws.send(json.dumps(response))
+            except json.JSONDecodeError:
+                ws.send(json.dumps({"error": "Invalid message format"}))
+            except Exception as e:
+                logger.error(f"Error processing message: {str(e)}")
+                ws.send(json.dumps({"error": str(e)}))
+    except Exception as e:
+        logger.error(f"WebSocket error: {str(e)}")
+    finally:
+        if client_id in active_connections:
+            del active_connections[client_id]
+
+# Real-time Queries Routes
+@app.route('/stock/<symbol>', methods=['GET'])
+async def get_stock(symbol):
+    """Get real-time stock price for a symbol"""
+    try:
+        result = await asyncio.get_event_loop().run_in_executor(
+            thread_pool, rtq.get_stock_price, symbol
+        )
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error getting stock price: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/news', methods=['GET'])
+async def get_news():
+    """Get market news"""
+    try:
+        query = request.args.get('query', 'finance')
+        limit = int(request.args.get('limit', 5))
+        result = await rtq.get_market_news(query, limit)
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error getting news: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/faq', methods=['GET'])
+async def get_faq():
+    """Get FAQ answer"""
+    try:
+        question = request.args.get('question', '')
+        if not question:
+            return jsonify({"error": "Question is required"}), 400
+            
+        result = rtq.get_faq_answer(question)
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error getting FAQ: {str(e)}")
+        return jsonify({"error": str(e)}), 500
 
 # Market Trend Analyzer Routes
 @app.route('/analyze', methods=['POST'])
@@ -75,7 +159,7 @@ async def analyze_investment():
         logger.error(f"Error in analyze endpoint: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
-@app.route('/stock/<symbol>', methods=['GET'])
+@app.route('/stock-analysis/<symbol>', methods=['GET'])
 async def get_stock_analysis(symbol):
     """Get stock analysis for a symbol"""
     try:
@@ -361,6 +445,3 @@ def user_files_api():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
-
-
-
