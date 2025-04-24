@@ -1,30 +1,45 @@
 import { NextResponse } from 'next/server';
-import { getAuth } from '@clerk/nextjs/server';
-import { readFile } from 'fs/promises';
-import { join } from 'path';
+import { auth } from '@clerk/nextjs/server';
 
 export async function GET(
   request: Request,
   { params }: { params: { filename: string } }
 ) {
   try {
-    const { userId } = getAuth();
+    // Get authenticated user
+    const { userId } = await auth();
     
     if (!userId) {
       return new NextResponse('Unauthorized', { status: 401 });
     }
-
+    
+    // Access the filename parameter
     const { filename } = params;
-    const path = join(process.cwd(), 'public', 'reports', filename);
+    console.log(`Fetching report: ${filename}`);
+    
+    // Fetch the report file from the Flask backend
+    const url = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/reports/${encodeURIComponent(filename)}`;
+    console.log(`Fetching from: ${url}`);
+    
+    const response = await fetch(url, { method: 'GET' });
 
-    try {
-      const content = await readFile(path, 'utf-8');
-      return new NextResponse(content);
-    } catch (error) {
-      return new NextResponse('Report not found', { status: 404 });
+    if (!response.ok) {
+      console.error(`Failed to fetch report: ${response.status} ${response.statusText}`);
+      return new NextResponse(`Failed to fetch report: ${response.statusText}`, { status: response.status });
     }
+
+    // Get the file content as blob
+    const fileBlob = await response.blob();
+    
+    // Return the file with appropriate headers
+    return new NextResponse(fileBlob, {
+      headers: {
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `attachment; filename="${filename}"`,
+      },
+    });
   } catch (error) {
     console.error('Error serving report:', error);
     return new NextResponse('Internal Server Error', { status: 500 });
   }
-} 
+}

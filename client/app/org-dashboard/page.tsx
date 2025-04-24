@@ -264,7 +264,7 @@ export default function OrgDashboard() {
                 Access your generated financial reports and insights.
               </p>
               <Link
-                href="/dashboard"
+                href="/view-reports"
                 className="inline-block bg-purple-600 text-white px-6 py-2 rounded-md hover:bg-purple-700 transition-colors"
               >
                 View Reports
@@ -313,13 +313,13 @@ export default function OrgDashboard() {
                   href="/generate-reports"
                   className="inline-block w-full bg-indigo-600 text-white px-6 py-2 rounded-md hover:bg-indigo-700 transition-colors text-center"
                 >
-                  Data Report
+                  User Report
                 </Link>
                 <Link
                   href="/generate-reports"
                   className="inline-block w-full bg-pink-600 text-white px-6 py-2 rounded-md hover:bg-pink-700 transition-colors text-center"
                 >
-                  Stock Report
+                  Organization Report
                 </Link>
               </div>
             </div>

@@ -5,16 +5,10 @@ from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
-import asyncio
-import logging
-from concurrent.futures import ThreadPoolExecutor
+import uuid
 
 # Load environment variables from .env file
 load_dotenv()
-
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 # Add the current directory to the Python path to handle imports
 import sys
@@ -30,130 +24,20 @@ from tools.personalized_financial_advisor import (
     update_user_preferences
 )
 
-# Import the market trend analyzer
-from tools.market_trend_analyzer import MarketTrendAnalyzer
-
-# Initialize Flask app
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
-
-# Initialize MarketTrendAnalyzer
-analyzer = MarketTrendAnalyzer()
 
 # Ensure the reports directory exists
 os.makedirs("reports", exist_ok=True)
 os.makedirs("reports/charts", exist_ok=True)
 
-# Initialize thread pool for async operations
-thread_pool = ThreadPoolExecutor(max_workers=10)
-
-@app.before_first_request
-async def initialize():
-    """Initialize the analyzer before the first request"""
-    await analyzer.initialize()
-
-@app.teardown_appcontext
-async def cleanup(exception=None):
-    """Cleanup resources when the app context is torn down"""
-    await analyzer.cleanup()
-
-# Market Trend Analyzer Routes
-@app.route('/analyze', methods=['POST'])
-async def analyze_investment():
-    """Analyze investment potential for a symbol"""
-    try:
-        data = request.get_json()
-        symbol = data.get('symbol')
-        company_name = data.get('company_name')
-        
-        if not symbol:
-            return jsonify({"error": "Symbol is required"}), 400
-            
-        result = await analyzer.analyze_investment(symbol, company_name)
-        return jsonify(result)
-    except Exception as e:
-        logger.error(f"Error in analyze endpoint: {str(e)}")
-        return jsonify({"error": str(e)}), 500
-
-@app.route('/stock/<symbol>', methods=['GET'])
-async def get_stock_analysis(symbol):
-    """Get stock analysis for a symbol"""
-    try:
-        company_name = request.args.get('company_name')
-        result = await analyzer.analyze_investment(symbol, company_name)
-        return jsonify(result)
-    except Exception as e:
-        logger.error(f"Error in stock endpoint: {str(e)}")
-        return jsonify({"error": str(e)}), 500
-
-@app.route('/technical/<symbol>', methods=['GET'])
-async def get_technical_analysis(symbol):
-    """Get technical analysis for a symbol"""
-    try:
-        df = analyzer.get_historical_data(symbol)
-        result = analyzer.calculate_technical_indicators(df)
-        return jsonify(result)
-    except Exception as e:
-        logger.error(f"Error in technical endpoint: {str(e)}")
-        return jsonify({"error": str(e)}), 500
-
-@app.route('/sentiment/<symbol>', methods=['GET'])
-async def get_sentiment_analysis(symbol):
-    """Get sentiment analysis for a symbol"""
-    try:
-        company_name = request.args.get('company_name')
-        news_sentiment = await analyzer.get_news_sentiment(symbol, company_name)
-        social_sentiment = await analyzer.get_social_sentiment(symbol)
-        
-        return jsonify({
-            "news_sentiment": news_sentiment,
-            "social_sentiment": social_sentiment,
-            "combined_sentiment": {
-                "score": (news_sentiment.get("raw_sentiment", 0) + social_sentiment.get("raw_sentiment", 0)) / 2,
-                "category": "positive" if (news_sentiment.get("raw_sentiment", 0) + social_sentiment.get("raw_sentiment", 0)) / 2 > 0.1 
-                          else "negative" if (news_sentiment.get("raw_sentiment", 0) + social_sentiment.get("raw_sentiment", 0)) / 2 < -0.1 
-                          else "neutral"
-            }
-        })
-    except Exception as e:
-        logger.error(f"Error in sentiment endpoint: {str(e)}")
-        return jsonify({"error": str(e)}), 500
-
-@app.route('/fundamental/<symbol>', methods=['GET'])
-async def get_fundamental_analysis(symbol):
-    """Get fundamental analysis for a symbol"""
-    try:
-        result = analyzer.get_fundamental_analysis(symbol)
-        return jsonify(result)
-    except Exception as e:
-        logger.error(f"Error in fundamental endpoint: {str(e)}")
-        return jsonify({"error": str(e)}), 500
-
-@app.route('/chart/<symbol>', methods=['GET'])
-async def get_price_chart(symbol):
-    """Get price chart for a symbol"""
-    try:
-        period = request.args.get('period', '1y')
-        if period not in ['1d', '5d', '1mo', '3mo', '6mo', '1y', '2y', '5y', '10y', 'ytd', 'max']:
-            return jsonify({"error": "Invalid period"}), 400
-            
-        chart = analyzer.generate_price_chart(symbol, period)
-        if not chart:
-            return jsonify({"error": "Chart could not be generated"}), 404
-            
-        return jsonify({"chart": chart})
-    except Exception as e:
-        logger.error(f"Error in chart endpoint: {str(e)}")
-        return jsonify({"error": str(e)}), 500
-
-# Original Main Server Routes
 @app.route('/')
 def root():
     return jsonify({"message": "Finance RAG Application Server is running"})
 
-@app.route('/generate-stock-report', methods=['POST'])
-def generate_stock_report():
-    """Generate a financial report for a stock symbol."""
+@app.route('/generate-organization-financial-report', methods=['POST'])
+def generate_organization_financial_report_api():
+    """Generate an Organizational financial report for a stock symbol."""
     try:
         data = request.get_json()
         symbol = data.get('symbol')
@@ -161,39 +45,33 @@ def generate_stock_report():
         
         if not symbol:
             return jsonify({"error": "Stock symbol is required"}), 400
-            
+        
+        # Generate unique ID for this report
+        report_id = str(uuid.uuid4())[:8]
+
         report_path = generate_financial_report(
             data_source=symbol,
-            data_type=data_type
+            data_type=data_type,
+            report_id=report_id
         )
-        return jsonify({"success": True, "report_path": report_path})
+
+        chart_files = {}
+        for file in os.listdir("reports/charts"):
+            if file.startswith(report_id) and file.endswith(".png"):
+                chart_type = "price_chart" if "price" in file else "other_chart"
+                chart_files[chart_type] = file
+
+        return jsonify({
+            "success": True, 
+            "report_path": report_path,
+            "charts": chart_files
+        })
     except Exception as e:
         return jsonify({"error": f"Error generating report: {str(e)}"}), 500
 
-@app.route('/generate-data-report', methods=['POST'])
-def generate_data_report():
-    """Generate a financial report from JSON data."""
-    try:
-        data = request.get_json()
-        financial_data = data.get('data')
-        data_type = data.get('data_type', 'individual')
-        
-        if not financial_data:
-            return jsonify({"error": "Financial data is required"}), 400
-            
-        # Convert the JSON data to a DataFrame
-        df = pd.DataFrame(financial_data)
-        report_path = generate_financial_report(
-            data_source=df,
-            data_type=data_type
-        )
-        return jsonify({"success": True, "report_path": report_path})
-    except Exception as e:
-        return jsonify({"error": f"Error generating report: {str(e)}"}), 500
-
-@app.route('/upload-file-report', methods=['POST'])
-def upload_file_report():
-    """Generate a financial report from an uploaded file (CSV, Excel, JSON)."""
+@app.route('/generate-user-financial-report', methods=['POST'])
+def generate_user_financial_report_api():
+    """Generate a financial report based on the user's provided data. (data -> xls,csv,json)"""
     try:
         if 'file' not in request.files:
             return jsonify({"error": "No file part"}), 400
@@ -215,17 +93,39 @@ def upload_file_report():
             with NamedTemporaryFile(delete=False, suffix=file_ext) as temp_file:
                 file.save(temp_file.name)
                 temp_path = temp_file.name
+            
+            # Generate unique ID for this report
+            report_id = str(uuid.uuid4())[:8]
 
             # Generate the report from the file
             report_path = generate_financial_report(
                 data_source=temp_path,
-                data_type=data_type
+                data_type=data_type,
+                report_id=report_id
             )
 
+            # Find the charts generated for this report
+            chart_files = {}
+            for file in os.listdir("reports/charts"):
+                if file.startswith(report_id) and file.endswith(".png"):
+                    # Better chart type identification
+                    if "revenue" in file or "expenses" in file:
+                        chart_files["revenue_chart"] = file
+                    elif "price" in file or "stock" in file:
+                        chart_files["price_chart"] = file
+                    else:
+                        chart_files["other_chart"] = file
+            
             # Clean up the temporary file
             os.unlink(temp_path)
             
-            return jsonify({"success": True, "report_path": report_path})
+            return jsonify({
+                "success": True, 
+                "report_path": report_path,
+                "filename": os.path.basename(report_path),
+                "charts": chart_files
+            })
+            
     except Exception as e:
         return jsonify({"error": f"Error generating report: {str(e)}"}), 500
 
@@ -245,6 +145,56 @@ def get_chart(filename):
         return jsonify({"error": "Chart file not found"}), 404
     return send_file(file_path, as_attachment=True)
 
+@app.route('/view-reports', methods=['GET'])
+def view_reports():
+    """Get all reports for a user."""
+    try:
+        user_id = request.args.get('userId')
+        
+        # List all PDF files in the reports directory
+        reports_dir = os.path.join(os.path.dirname(__file__), 'reports')
+        reports = []
+        
+        if os.path.exists(reports_dir):
+            for file in os.listdir(reports_dir):
+                if file.endswith('.pdf'):
+                    # Get report_id from filename prefix if possible
+                    report_id = None
+                    if '_' in file:
+                        report_id = file.split('_')[0]
+                    
+                    # Find associated chart files
+                    chart_files = {}
+                    if report_id:
+                        charts_dir = os.path.join(reports_dir, 'charts')
+                        if os.path.exists(charts_dir):
+                            for chart in os.listdir(charts_dir):
+                                if chart.startswith(report_id) and chart.endswith('.png'):
+                                    if 'stock' in chart or 'price' in chart:
+                                        chart_files['stock_chart'] = chart
+                                    elif 'revenue' in chart or 'expense' in chart:
+                                        chart_files['revenue_chart'] = chart
+                    
+                    report_type = 'stock' if 'organization' in file or 'stock' in file else 'user'
+                    
+                    # Add report info to list
+                    reports.append({
+                        "filename": file,
+                        "reportType": report_type,
+                        "chartFiles": chart_files,
+                        "created": os.path.getctime(os.path.join(reports_dir, file))
+                    })
+        
+        # Sort by creation date, newest first
+        reports.sort(key=lambda x: x['created'], reverse=True)
+        
+        return jsonify({
+            "reports": reports,
+            "success": True
+        })
+    except Exception as e:
+        return jsonify({"error": f"Error fetching reports: {str(e)}"}), 500
+    
 @app.route('/example')
 def run_example():
     """Run the example reports for testing."""
@@ -361,6 +311,5 @@ def user_files_api():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
-
 
 

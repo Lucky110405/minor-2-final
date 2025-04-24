@@ -313,13 +313,13 @@ export default function UserDashboard() {
                   href="/generate-reports"
                   className="inline-block w-full bg-indigo-600 text-white px-6 py-2 rounded-md hover:bg-indigo-700 transition-colors text-center"
                 >
-                  Data Report
+                  User Report
                 </Link>
                 <Link
                   href="/generate-reports"
                   className="inline-block w-full bg-pink-600 text-white px-6 py-2 rounded-md hover:bg-pink-700 transition-colors text-center"
                 >
-                  Stock Report
+                  Orgaization Report
                 </Link>
               </div>
             </div>

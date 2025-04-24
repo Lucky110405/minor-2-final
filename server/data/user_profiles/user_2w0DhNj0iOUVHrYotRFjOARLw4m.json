@@ -1,21 +1,33 @@
 {
   "user_id": "user_2w0DhNj0iOUVHrYotRFjOARLw4m",
-  "risk_tolerance": "moderate",
+  "risk_tolerance": "Moderate",
   "financial_goals": [
+    "Determine next steps",
     "investment",
+    "Analyze financial data",
     "retirement"
   ],
   "investment_horizon": "long-term",
   "preferences": {
     "sustainability": 0.5,
-    "technology": 0.35,
-    "healthcare": 0.35
+    "technology": 0.32149999999999995,
+    "healthcare": 0.32149999999999995
   },
   "interaction_history": [
     {
       "query": "should i invest in stocks now or not \n",
       "timestamp": "2025-04-22T09:44:59.994844",
       "response_summary": "\n\nBased on the information provided, the advice consistently emphasizes the need to closely monitor ..."
+    },
+    {
+      "query": "what is my pe ratio\n",
+      "timestamp": "2025-04-24T01:04:22.679321",
+      "response_summary": "\nBased on the information provided, I cannot tell you your specific Price-to-Earnings (P/E) ratio. T..."
+    },
+    {
+      "query": "based on my organisation's financial data, what is the steps we should take and why",
+      "timestamp": "2025-04-24T01:11:10.570625",
+      "response_summary": "\n\nOkay, based on the information provided \u2013 specifically the repeated recommendation to address high..."
     }
   ]
 }

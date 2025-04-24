@@ -1,5 +1,7 @@
 'use client';
 
+// we are not using this currently
+
 import { useTheme } from '@/context/ThemeContext';
 import Header from '@/components/Header';
 import { useAuth } from "@clerk/nextjs";

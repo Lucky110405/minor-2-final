@@ -1,36 +1,49 @@
 import { NextResponse } from 'next/server';
-import { getAuth } from '@clerk/nextjs/server';
+import { auth } from '@clerk/nextjs/server';
 
 export async function GET(
   request: Request,
   { params }: { params: { filename: string } }
 ) {
   try {
-    const { userId } = getAuth();
+    // Get authenticated user with the updated auth method
+    const { userId } = await auth();
     
     if (!userId) {
       return new NextResponse('Unauthorized', { status: 401 });
     }
 
+    // Access the filename parameter - use await to satisfy Next.js requirements
     const { filename } = params;
+    
+    // Fetch the chart file from the Flask backend
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/reports/charts/${encodeURIComponent(filename)}`,
+      { 
+        method: 'GET',
+        redirect: 'follow',
+      }
+    );
 
-    // Here you would typically generate or fetch chart data based on the report
-    // For now, we'll return sample data
-    const chartData = {
-      labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
-      datasets: [
-        {
-          label: 'Sample Data',
-          data: [12, 19, 3, 5, 2, 3],
-          borderColor: 'rgb(75, 192, 192)',
-          tension: 0.1
-        }
-      ]
-    };
+    if (!response.ok) {
+      if (response.status === 404) {
+        return new NextResponse('Chart not found', { status: 404 });
+      }
+      return new NextResponse(`Failed to fetch chart: ${response.statusText}`, { status: response.status });
+    }
 
-    return NextResponse.json(chartData);
+    // Get the file content as blob
+    const imageBlob = await response.blob();
+    
+    // Return the image with appropriate headers
+    return new NextResponse(imageBlob, {
+      headers: {
+        'Content-Type': 'image/png',
+        'Content-Disposition': `inline; filename="${filename}"`,
+      },
+    });
   } catch (error) {
-    console.error('Error serving chart data:', error);
+    console.error('Error serving chart:', error);
     return new NextResponse('Internal Server Error', { status: 500 });
   }
-} 
+}

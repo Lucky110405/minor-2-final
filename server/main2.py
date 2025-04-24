@@ -10,6 +10,7 @@ import logging
 from concurrent.futures import ThreadPoolExecutor
 import json
 from flask_sock import Sock
+import threading
 import time
 
 # Load environment variables from .env file
@@ -58,17 +59,28 @@ thread_pool = ThreadPoolExecutor(max_workers=10)
 # WebSocket connections
 active_connections = {}
 
-@app.before_first_request
-async def initialize():
-    """Initialize the analyzers before the first request"""
-    await analyzer.initialize()
-    await rtq.initialize()
+def initialize_app():
+    """Initialize the analyzers"""
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    loop.run_until_complete(analyzer.initialize())
+    loop.run_until_complete(rtq.initialize())
+    loop.close()
 
 @app.teardown_appcontext
-async def cleanup(exception=None):
+def cleanup(exception=None):
     """Cleanup resources when the app context is torn down"""
-    await analyzer.cleanup()
-    await rtq.cleanup()
+    # Run async cleanup in a separate thread
+    def run_async_cleanup():
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(analyzer.cleanup())
+        loop.run_until_complete(rtq.cleanup())
+        loop.close()
+    
+    thread = threading.Thread(target=run_async_cleanup)
+    thread.start()
+    thread.join(timeout=5)  # Wait up to 5 seconds for cleanup
 
 # WebSocket endpoint for real-time queries
 @sock.route('/ws')
@@ -444,4 +456,6 @@ def user_files_api():
         return jsonify({"error": f"Error listing user files: {str(e)}"}), 500
 
 if __name__ == "__main__":
+    # Initialize components before starting the app
+    initialize_app()
     app.run(host="0.0.0.0", port=5000, debug=True)
