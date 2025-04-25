@@ -21,7 +21,8 @@ from tools.Tool_1_Financial_Report_Generator import generate_financial_report
 from tools.personalized_financial_advisor import (
     process_financial_document,
     get_financial_advice,
-    update_user_preferences
+    update_user_preferences,
+    get_model_evaluation
 )
 
 app = Flask(__name__)
@@ -194,29 +195,36 @@ def view_reports():
         })
     except Exception as e:
         return jsonify({"error": f"Error fetching reports: {str(e)}"}), 500
-    
-@app.route('/example')
-def run_example():
-    """Run the example reports for testing."""
+
+@app.route('/user-files', methods=['GET'])
+def user_files_api():
     try:
-        # Example 1: Individual data
-        sample_individual_data = pd.DataFrame({
-            'period': ['Jan', 'Feb', 'Mar', 'Apr'],
-            'revenue': [10000, 12000, 9500, 15000],
-            'expenses': [8000, 7500, 8200, 9000]
-        })
-        individual_report = generate_financial_report(sample_individual_data, "individual")
+        user_id = request.args.get('user_id')
+        if not user_id:
+            return jsonify({"error": "User ID is required"}), 400
         
-        # Example 2: Organizational data (stock symbol)
-        org_report = generate_financial_report("AAPL", "organization")
+        # Look in multiple possible directories
+        document_paths = [
+            f"data/documents/{user_id}",
+            f"data/chat_documents/{user_id}",
+            f"data/uploaded_files/{user_id}"
+        ]
         
-        return jsonify({
-            "success": True, 
-            "individual_report": individual_report,
-            "organization_report": org_report
-        })
+        files = []
+        for path in document_paths:
+            if os.path.exists(path):
+                for file_name in os.listdir(path):
+                    file_path = os.path.join(path, file_name)
+                    if os.path.isfile(file_path):
+                        files.append({
+                            "id": file_path,  # Use full path as ID
+                            "name": file_name
+                        })
+                
+        return jsonify({"files": files})
     except Exception as e:
-        return jsonify({"error": f"Error running example: {str(e)}"}), 500
+        return jsonify({"error": f"Error listing user files: {str(e)}"}), 500
+
 
 @app.route('/process-document', methods=['POST'])
 def process_document_api():
@@ -280,34 +288,20 @@ def update_preferences_api():
     except Exception as e:
         return jsonify({"error": f"Error updating preferences: {str(e)}"}), 500
 
-@app.route('/user-files', methods=['GET'])
-def user_files_api():
+@app.route('/get-model-evaluation', methods=['POST'])
+def model_evaluation_api():
     try:
-        user_id = request.args.get('user_id')
-        if not user_id:
-            return jsonify({"error": "User ID is required"}), 400
+        data = request.get_json()
+        user_id = data.get('user_id')
+        evaluation_data = data.get('evaluation_data')
         
-        # Look in multiple possible directories
-        document_paths = [
-            f"data/documents/{user_id}",
-            f"data/chat_documents/{user_id}",
-            f"data/uploaded_files/{user_id}"
-        ]
+        if not user_id or not evaluation_data:
+            return jsonify({"error": "User ID and evaluation data are required"}), 400
         
-        files = []
-        for path in document_paths:
-            if os.path.exists(path):
-                for file_name in os.listdir(path):
-                    file_path = os.path.join(path, file_name)
-                    if os.path.isfile(file_path):
-                        files.append({
-                            "id": file_path,  # Use full path as ID
-                            "name": file_name
-                        })
-                
-        return jsonify({"files": files})
+        evaluation_result = get_model_evaluation(user_id, evaluation_data)
+        return jsonify({"evaluation": evaluation_result})
     except Exception as e:
-        return jsonify({"error": f"Error listing user files: {str(e)}"}), 500
+        return jsonify({"error": f"Error evaluating model: {str(e)}"}), 500
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)

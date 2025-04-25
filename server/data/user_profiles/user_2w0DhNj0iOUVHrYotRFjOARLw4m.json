@@ -1,33 +1,120 @@
 {
   "user_id": "user_2w0DhNj0iOUVHrYotRFjOARLw4m",
-  "risk_tolerance": "Moderate",
+  "risk_tolerance": "moderate",
   "financial_goals": [
     "Determine next steps",
+    "Identify concerning trends",
+    "retirement",
+    "Determine total revenue",
     "investment",
-    "Analyze financial data",
-    "retirement"
+    "Analyze financial data"
   ],
   "investment_horizon": "long-term",
   "preferences": {
-    "sustainability": 0.5,
-    "technology": 0.32149999999999995,
-    "healthcare": 0.32149999999999995
+    "sustainability": 0.0002792729320416416,
+    "technology": 0.0001795724953027755,
+    "healthcare": 0.0001795724953027755
   },
   "interaction_history": [
     {
-      "query": "should i invest in stocks now or not \n",
-      "timestamp": "2025-04-22T09:44:59.994844",
-      "response_summary": "\n\nBased on the information provided, the advice consistently emphasizes the need to closely monitor ..."
+      "query": "Are there any concerning trends in my finances?",
+      "timestamp": "2025-04-25T19:18:33.240571",
+      "response_summary": "\n\nBased solely on the provided information \u2013 which primarily emphasizes the importance of tracking e..."
     },
     {
-      "query": "what is my pe ratio\n",
-      "timestamp": "2025-04-24T01:04:22.679321",
-      "response_summary": "\nBased on the information provided, I cannot tell you your specific Price-to-Earnings (P/E) ratio. T..."
+      "query": "what is my total revenue\n",
+      "timestamp": "2025-04-25T19:51:46.116387",
+      "response_summary": "Okay, based on the information available, I can tell you that the data summary indicates the individ..."
     },
     {
-      "query": "based on my organisation's financial data, what is the steps we should take and why",
-      "timestamp": "2025-04-24T01:11:10.570625",
-      "response_summary": "\n\nOkay, based on the information provided \u2013 specifically the repeated recommendation to address high..."
+      "query": "Are there any concerning trends in my finances?",
+      "timestamp": "2025-04-25T20:15:27.070629",
+      "response_summary": "\nBased solely on the repeated emphasis on \u201cexpenses based on historical data and anticipated changes..."
+    },
+    {
+      "query": "Are there any concerning trends in my finances?",
+      "timestamp": "2025-04-25T20:45:12.441210",
+      "response_summary": "\nBased solely on the provided context \u2013 which repeatedly emphasizes the importance of analyzing hist..."
+    },
+    {
+      "query": "Are there any concerning trends in my finances?",
+      "timestamp": "2025-04-25T21:16:27.485432",
+      "response_summary": "\nBased solely on the repeated emphasis on \u201cexpenses based on historical data and anticipated changes..."
+    },
+    {
+      "query": "Are there any concerning trends in my finances?",
+      "timestamp": "2025-04-25T21:26:50.487813",
+      "response_summary": "\nBased solely on the provided context \u2013 which repeatedly emphasizes the importance of analyzing hist..."
+    },
+    {
+      "query": "Are there any concerning trends in my finances?",
+      "timestamp": "2025-04-25T21:32:57.581163",
+      "response_summary": "\nBased solely on the provided context \u2013 which repeatedly emphasizes the importance of analyzing hist..."
+    },
+    {
+      "query": "Are there any concerning trends in my finances?",
+      "timestamp": "2025-04-25T21:36:58.729963",
+      "response_summary": "\nBased solely on the provided context \u2013 which repeatedly emphasizes the importance of analyzing hist..."
+    },
+    {
+      "query": "Are there any concerning trends in my finances?",
+      "timestamp": "2025-04-25T21:40:20.385504",
+      "response_summary": "\nBased solely on the provided context \u2013 which repeatedly emphasizes the importance of analyzing hist..."
+    },
+    {
+      "query": "Are there any concerning trends in my finances?\n",
+      "timestamp": "2025-04-26T00:54:40.537825",
+      "response_summary": "Based on the information provided, I cannot pinpoint any specific concerning trends in your finances..."
+    },
+    {
+      "query": "Are there any concerning trends in my finances?",
+      "timestamp": "2025-04-26T01:09:13.774428",
+      "response_summary": "Based on the information provided, I cannot pinpoint any specific concerning trends in your finances..."
+    },
+    {
+      "query": "Are there any concerning trends in my finances?",
+      "timestamp": "2025-04-26T01:32:25.301802",
+      "response_summary": "\nBased solely on the provided context \u2013 which repeatedly emphasizes the importance of analyzing hist..."
+    },
+    {
+      "query": "Are there any concerning trends in my finances?",
+      "timestamp": "2025-04-26T02:47:54.742379",
+      "response_summary": "\nBased solely on the provided context \u2013 which repeatedly emphasizes the importance of analyzing hist..."
+    },
+    {
+      "query": "Are there any concerning trends in my finances?",
+      "timestamp": "2025-04-26T02:56:32.786830",
+      "response_summary": "\nBased solely on the provided context \u2013 which repeatedly emphasizes the importance of analyzing hist..."
+    },
+    {
+      "query": "Are there any concerning trends in my finances?",
+      "timestamp": "2025-04-26T03:02:59.818004",
+      "response_summary": "\nBased solely on the provided context \u2013 which repeatedly emphasizes the importance of analyzing hist..."
+    },
+    {
+      "query": "Are there any concerning trends in my finances?",
+      "timestamp": "2025-04-26T03:07:11.105132",
+      "response_summary": "\nBased solely on the provided context \u2013 which repeatedly emphasizes the importance of analyzing hist..."
+    },
+    {
+      "query": "Are there any concerning trends in my finances?",
+      "timestamp": "2025-04-26T03:14:29.859547",
+      "response_summary": "\n\nBased solely on the provided context \u2013 which repeatedly emphasizes the importance of analyzing his..."
+    },
+    {
+      "query": "Are there any concerning trends in my finances?",
+      "timestamp": "2025-04-26T03:46:56.290829",
+      "response_summary": "\nBased on the information available, it\u2019s difficult to definitively identify any *specific* concerni..."
+    },
+    {
+      "query": "Are there any concerning trends in my finances?",
+      "timestamp": "2025-04-26T03:53:40.430695",
+      "response_summary": "\nOkay, based on your profile and the available information, let\u2019s address your question about concer..."
+    },
+    {
+      "query": "Are there any concerning trends in my finances?",
+      "timestamp": "2025-04-26T04:01:54.770986",
+      "response_summary": "\nOkay, based on your profile and the available information, let\u2019s address your question about concer..."
     }
   ]
 }

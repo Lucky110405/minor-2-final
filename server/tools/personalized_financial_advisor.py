@@ -26,12 +26,13 @@ from unstructured.partition.auto import partition
 from langgraph.graph import StateGraph, END
 from models.embedding_model import EmbeddingModel
 from models.llm import OpenRouterLLM
+# from models.gemini_model import GeminiLLM
 from pinecone import Pinecone, ServerlessSpec
 from neo4j import GraphDatabase
 import spacy
 import matplotlib.pyplot as plt
 from uuid import uuid4
-from models.evaluation_model import evaluate_response
+# from models.evaluation_model import evaluate_response
 
 # Ensure necessary directories exist
 os.makedirs("data/documents", exist_ok=True)
@@ -52,6 +53,7 @@ class FinancialAdvisorState(TypedDict):
     relevant_facts: Optional[List[Dict[str, Any]]]
     user_profile: Optional[Dict[str, Any]]
     response: Optional[str]
+    evaluation: Optional[Dict[str, Any]]
 
 # Initialize NLP model for entity extraction
 try:
@@ -73,8 +75,12 @@ class PersonalizedFinancialAdvisor:
             raise
 
         try:
-            # Pinecone setup
+
             self.llm = OpenRouterLLM(api_key=os.getenv("OPENROUTER_GEMMA_API_KEY"), temperature=0.1)
+            # self.llm = GeminiLLM(api_key=os.getenv("GOOGLE_API_KEY"))
+
+            # Pinecone setup
+
             pc = Pinecone(api_key=os.getenv("PINECONE_API_KEY"))
             index_name = "financial-documents"
 
@@ -331,7 +337,7 @@ class PersonalizedFinancialAdvisor:
             for entity in entities:
                 session.run(
                     """
-                    CREATE (e:Entity {
+                    MERGE (e:Entity {
                         id: $id,
                         text: $text,
                         type: $type,
@@ -551,7 +557,17 @@ class PersonalizedFinancialAdvisor:
         
         # Extract text from results
         if vector_results and "matches" in vector_results:
-            results["vector_contexts"] = [match["metadata"]["text"] for match in vector_results["matches"]]
+            retrieved_contexts = [{"text": match["metadata"]["text"]} for match in vector_results["matches"]]
+            # Add deduplication to ensure variety in retrieved contexts
+            unique_contexts = []
+            seen = set()
+            for context in retrieved_contexts:
+                content = context['text']
+                if content not in seen:
+                    seen.add(content)
+                    unique_contexts.append(context)
+
+            results["vector_contexts"] = [ctx["text"] for ctx in unique_contexts]
         
         # Step 2: Search for relevant entities in Neo4j
         # Generate search terms from query
@@ -721,18 +737,18 @@ def generate_response_node(state: FinancialAdvisorState) -> FinancialAdvisorStat
         contexts
     )
 
-    # Fixed evaluation call with proper parameters
-    if state["relevant_contexts"]:
-        try:
-            evaluation_result = evaluate_response(
-                query=state["query"],
-                response=response, 
-                contexts=state["relevant_contexts"]
-            )
-            # Store evaluation result if needed
-            state["evaluation"] = evaluation_result
-        except Exception as e:
-            print(f"Error evaluating response: {str(e)}")
+    # # Fixed evaluation call with proper parameters
+    # if state["relevant_contexts"]:
+    #     try:
+    #         evaluation_result = evaluate_response(
+    #             query=state["query"],
+    #             response=response, 
+    #             contexts=state["relevant_contexts"]
+    #         )
+    #         # Store evaluation result if needed
+    #         state["evaluation"] = evaluation_result
+    #     except Exception as e:
+    #         print(f"Error evaluating response: {str(e)}")
     
     state["response"] = response
     return state
@@ -827,3 +843,9 @@ def update_user_preferences(user_id: str, preferences: Dict[str, Any]) -> Dict[s
     with open(profile_path, 'w') as f:
         json.dump(profile, f, indent=2)
     return profile
+
+# def get_model_evaluation(query: str, response: str, contexts: List[str]) -> Dict[str, Any]:
+#     """Evaluate the model's response based on the provided contexts"""
+#     # Placeholder for evaluation logic
+#     evaluation_result = evaluate_response(query, response, contexts)
+#     return evaluation_result

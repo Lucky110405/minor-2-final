@@ -10,8 +10,6 @@ load_dotenv()
 OPENROUTER_GEMMA_API_KEY = os.getenv("OPENROUTER_GEMMA_API_KEY")
 BASE_URL="https://openrouter.ai/api/v1"
 
-
-
 class OpenRouterLLM:
     def __init__(self, api_key, temperature=0.1):
         self.headers = {
@@ -63,3 +61,5 @@ class OpenRouterLLM:
         except Exception as e:
             print(f"Error calling OpenRouter API: {e}")
             return "Sorry, I encountered an error processing your request."
+
+
