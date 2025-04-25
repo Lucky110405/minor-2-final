@@ -32,6 +32,7 @@ export default function Header({ user }: HeaderProps) {
   const navLinks = [
     { href: '/dashboard', label: 'Dashboard' },
     { href: '/financial-assistant', label: 'Financial Assistant' },
+    { href: '/real-time-queries', label: 'Market Insights' },
     { href: '/about', label: 'About Us' },
     { href: '/contact', label: 'Contact' },
     { href: '/documentation', label: 'Documentation' },
