@@ -43,7 +43,7 @@ export default function Header({ user }: HeaderProps) {
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center">
             <Link href="/" className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-              Oppai
+              Finance RAG
             </Link>
           </div>
 

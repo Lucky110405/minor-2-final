@@ -22,7 +22,7 @@ from tools.personalized_financial_advisor import (
     process_financial_document,
     get_financial_advice,
     update_user_preferences,
-    get_model_evaluation
+    # get_model_evaluation
 )
 
 app = Flask(__name__)
@@ -288,20 +288,20 @@ def update_preferences_api():
     except Exception as e:
         return jsonify({"error": f"Error updating preferences: {str(e)}"}), 500
 
-@app.route('/get-model-evaluation', methods=['POST'])
-def model_evaluation_api():
-    try:
-        data = request.get_json()
-        user_id = data.get('user_id')
-        evaluation_data = data.get('evaluation_data')
+# @app.route('/get-model-evaluation', methods=['POST'])
+# def model_evaluation_api():
+#     try:
+#         data = request.get_json()
+#         user_id = data.get('user_id')
+#         evaluation_data = data.get('evaluation_data')
         
-        if not user_id or not evaluation_data:
-            return jsonify({"error": "User ID and evaluation data are required"}), 400
+#         if not user_id or not evaluation_data:
+#             return jsonify({"error": "User ID and evaluation data are required"}), 400
         
-        evaluation_result = get_model_evaluation(user_id, evaluation_data)
-        return jsonify({"evaluation": evaluation_result})
-    except Exception as e:
-        return jsonify({"error": f"Error evaluating model: {str(e)}"}), 500
+#         evaluation_result = get_model_evaluation(user_id, evaluation_data)
+#         return jsonify({"evaluation": evaluation_result})
+#     except Exception as e:
+#         return jsonify({"error": f"Error evaluating model: {str(e)}"}), 500
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
