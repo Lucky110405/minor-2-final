@@ -1,6 +1,6 @@
 # Minor 2 Final Project
 
-This project is a [brief description of the project]. 
+It is an AI-powered platform that delivers highly personalized financial advice by leveraging cutting-edge Retrieval-Augmented Generation (RAG) technology. The system combines vector databases, knowledge graphs, and large language models to provide accurate, tailored financial guidance based on users' specific profiles, preferences, and financial documents.
 
 ## Features
 - Feature 1
