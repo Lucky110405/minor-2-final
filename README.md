@@ -91,10 +91,13 @@ minor-phase-2-project/
 
 ## Installation
 1. Clone the repo
+```text
 git clone https://github.com/Lucky110405/minor-2-final.git
 cd minor-2-final
+```
 
 2. Set up the server
+```text
 cd server
 python -m venv .venv
 (for Windows)
@@ -105,29 +108,37 @@ pip install --upgrade pip
 pip install -r requirements.txt
 cp .env.example .env
 (Edit .env: add your API keys & connection strings)
+```
 
 3. Set up the client
+```text
 cd ../client
 npm install        # or yarn / pnpm
 cp .env.example .env.local
 (Edit .env.local: NEXT_PUBLIC_API_URL=http://localhost:8000)
+```
 
 ## Server Usage
 - Start the Flask app
 On Windows (PowerShell):
+```text
 cd server
 set FLASK_APP=main.py
 flask run --reload --host=0.0.0.0 --port=8000
+```
 On macOS/Linux:
+```text
 cd server
 export FLASK_APP=main.py
 flask run --reload --host=0.0.0.0 --port=8000
+```
 
 ## Client Usage
 1. Start Next.js
+```text
 cd client
 npm run dev
-
+```
 2. Browse
 Open http://localhost:3000
 
@@ -140,8 +151,10 @@ Open http://localhost:3000
 
 ## Evaluation Suite
 The server/scripts/evaluate.py script runs a battery of test queries:
+```text
 cd server
 python scripts/evaluate.py
+```
 
 - Produces server/data/evaluation/evaluation_results_<timestamp>.json
 - Generates a chart PNG summarizing faithfulness, hallucination, answer & context relevance
