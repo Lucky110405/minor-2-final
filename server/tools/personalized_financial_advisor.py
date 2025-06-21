@@ -447,7 +447,12 @@ class PersonalizedFinancialAdvisor:
 
     def get_user_profile(self, user_id: str) -> Dict[str, Any]:
         """Get user profile or create one if it doesn't exist"""
-        profile_path = f"data/user_profiles/{user_id}.json"
+        project_root = os.path.abspath(
+            os.path.join(os.path.dirname(__file__), os.pardir, os.pardir)
+        )
+        profiles_dir = os.path.join(project_root, "server", "data", "user_profiles")
+        os.makedirs(profiles_dir, exist_ok=True)
+        profile_path = os.path.join(profiles_dir, f"{user_id}.json")
         
         if os.path.exists(profile_path):
             with open(profile_path, 'r') as f:
@@ -539,7 +544,7 @@ class PersonalizedFinancialAdvisor:
         
         return profile
     
-    def retrieve_context(self, query: str, user_id: str, top_k: int = 5) -> Dict[str, Any]:
+    def retrieve_context(self, query: str, user_id: str, top_k: int = 50) -> Dict[str, Any]:
         """Retrieve relevant context using both Pinecone and Neo4j"""
         results = {
             "vector_contexts": [],

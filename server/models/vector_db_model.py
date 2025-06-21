@@ -84,7 +84,7 @@ class VectorDBModel:
             print(f"Error storing document chunks: {str(e)}")
             return 0
 
-    def search(self, query, user_id=None, top_k=5):
+    def search(self, query, user_id=None, top_k=50):
         """Search for similar chunks to the query"""
         try:
             # Generate query embedding
@@ -103,7 +103,7 @@ class VectorDBModel:
             
             # Extract text and metadata
             matches = []
-            for match in results.get("matches", []):
+            for match in getattr(results, "matches", []):
                 matches.append({
                     "text": match["metadata"].get("text", ""),
                     "score": match["score"],
