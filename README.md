@@ -100,14 +100,14 @@ cd minor-2-final
 ```text
 cd server
 python -m venv .venv
-(for Windows)
+# for Windows
 .\.venv\Scripts\activate
-(macOS/Linux)
+# macOS/Linux
 source .venv/bin/activate
 pip install --upgrade pip
 pip install -r requirements.txt
 cp .env.example .env
-(Edit .env: add your API keys & connection strings)
+# Edit .env: add your API keys & connection strings
 ```
 
 3. Set up the client
@@ -115,7 +115,7 @@ cp .env.example .env
 cd ../client
 npm install        # or yarn / pnpm
 cp .env.example .env.local
-(Edit .env.local: NEXT_PUBLIC_API_URL=http://localhost:8000)
+# Edit .env.local: NEXT_PUBLIC_API_URL=http://localhost:8000
 ```
 
 ## Server Usage
