@@ -4,6 +4,11 @@ from tempfile import NamedTemporaryFile
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
+from dotenv import load_dotenv
+import uuid
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Add the current directory to the Python path to handle imports
 import sys
@@ -16,7 +21,8 @@ from tools.Tool_1_Financial_Report_Generator import generate_financial_report
 from tools.personalized_financial_advisor import (
     process_financial_document,
     get_financial_advice,
-    update_user_preferences
+    update_user_preferences,
+    # get_model_evaluation
 )
 
 app = Flask(__name__)
@@ -30,9 +36,9 @@ os.makedirs("reports/charts", exist_ok=True)
 def root():
     return jsonify({"message": "Finance RAG Application Server is running"})
 
-@app.route('/generate-stock-report', methods=['POST'])
-def generate_stock_report():
-    """Generate a financial report for a stock symbol."""
+@app.route('/generate-organization-financial-report', methods=['POST'])
+def generate_organization_financial_report_api():
+    """Generate an Organizational financial report for a stock symbol."""
     try:
         data = request.get_json()
         symbol = data.get('symbol')
@@ -40,39 +46,33 @@ def generate_stock_report():
         
         if not symbol:
             return jsonify({"error": "Stock symbol is required"}), 400
-            
+        
+        # Generate unique ID for this report
+        report_id = str(uuid.uuid4())[:8]
+
         report_path = generate_financial_report(
             data_source=symbol,
-            data_type=data_type
+            data_type=data_type,
+            report_id=report_id
         )
-        return jsonify({"success": True, "report_path": report_path})
+
+        chart_files = {}
+        for file in os.listdir("reports/charts"):
+            if file.startswith(report_id) and file.endswith(".png"):
+                chart_type = "price_chart" if "price" in file else "other_chart"
+                chart_files[chart_type] = file
+
+        return jsonify({
+            "success": True, 
+            "report_path": report_path,
+            "charts": chart_files
+        })
     except Exception as e:
         return jsonify({"error": f"Error generating report: {str(e)}"}), 500
 
-@app.route('/generate-data-report', methods=['POST'])
-def generate_data_report():
-    """Generate a financial report from JSON data."""
-    try:
-        data = request.get_json()
-        financial_data = data.get('data')
-        data_type = data.get('data_type', 'individual')
-        
-        if not financial_data:
-            return jsonify({"error": "Financial data is required"}), 400
-            
-        # Convert the JSON data to a DataFrame
-        df = pd.DataFrame(financial_data)
-        report_path = generate_financial_report(
-            data_source=df,
-            data_type=data_type
-        )
-        return jsonify({"success": True, "report_path": report_path})
-    except Exception as e:
-        return jsonify({"error": f"Error generating report: {str(e)}"}), 500
-
-@app.route('/upload-file-report', methods=['POST'])
-def upload_file_report():
-    """Generate a financial report from an uploaded file (CSV, Excel, JSON)."""
+@app.route('/generate-user-financial-report', methods=['POST'])
+def generate_user_financial_report_api():
+    """Generate a financial report based on the user's provided data. (data -> xls,csv,json)"""
     try:
         if 'file' not in request.files:
             return jsonify({"error": "No file part"}), 400
@@ -94,17 +94,39 @@ def upload_file_report():
             with NamedTemporaryFile(delete=False, suffix=file_ext) as temp_file:
                 file.save(temp_file.name)
                 temp_path = temp_file.name
+            
+            # Generate unique ID for this report
+            report_id = str(uuid.uuid4())[:8]
 
             # Generate the report from the file
             report_path = generate_financial_report(
                 data_source=temp_path,
-                data_type=data_type
+                data_type=data_type,
+                report_id=report_id
             )
 
+            # Find the charts generated for this report
+            chart_files = {}
+            for file in os.listdir("reports/charts"):
+                if file.startswith(report_id) and file.endswith(".png"):
+                    # Better chart type identification
+                    if "revenue" in file or "expenses" in file:
+                        chart_files["revenue_chart"] = file
+                    elif "price" in file or "stock" in file:
+                        chart_files["price_chart"] = file
+                    else:
+                        chart_files["other_chart"] = file
+            
             # Clean up the temporary file
             os.unlink(temp_path)
             
-            return jsonify({"success": True, "report_path": report_path})
+            return jsonify({
+                "success": True, 
+                "report_path": report_path,
+                "filename": os.path.basename(report_path),
+                "charts": chart_files
+            })
+            
     except Exception as e:
         return jsonify({"error": f"Error generating report: {str(e)}"}), 500
 
@@ -124,34 +146,92 @@ def get_chart(filename):
         return jsonify({"error": "Chart file not found"}), 404
     return send_file(file_path, as_attachment=True)
 
-@app.route('/example')
-def run_example():
-    """Run the example reports for testing."""
+@app.route('/view-reports', methods=['GET'])
+def view_reports():
+    """Get all reports for a user."""
     try:
-        # Example 1: Individual data
-        sample_individual_data = pd.DataFrame({
-            'period': ['Jan', 'Feb', 'Mar', 'Apr'],
-            'revenue': [10000, 12000, 9500, 15000],
-            'expenses': [8000, 7500, 8200, 9000]
-        })
-        individual_report = generate_financial_report(sample_individual_data, "individual")
+        user_id = request.args.get('userId')
         
-        # Example 2: Organizational data (stock symbol)
-        org_report = generate_financial_report("AAPL", "organization")
+        # List all PDF files in the reports directory
+        reports_dir = os.path.join(os.path.dirname(__file__), 'reports')
+        reports = []
+        
+        if os.path.exists(reports_dir):
+            for file in os.listdir(reports_dir):
+                if file.endswith('.pdf'):
+                    # Get report_id from filename prefix if possible
+                    report_id = None
+                    if '_' in file:
+                        report_id = file.split('_')[0]
+                    
+                    # Find associated chart files
+                    chart_files = {}
+                    if report_id:
+                        charts_dir = os.path.join(reports_dir, 'charts')
+                        if os.path.exists(charts_dir):
+                            for chart in os.listdir(charts_dir):
+                                if chart.startswith(report_id) and chart.endswith('.png'):
+                                    if 'stock' in chart or 'price' in chart:
+                                        chart_files['stock_chart'] = chart
+                                    elif 'revenue' in chart or 'expense' in chart:
+                                        chart_files['revenue_chart'] = chart
+                    
+                    report_type = 'stock' if 'organization' in file or 'stock' in file else 'user'
+                    
+                    # Add report info to list
+                    reports.append({
+                        "filename": file,
+                        "reportType": report_type,
+                        "chartFiles": chart_files,
+                        "created": os.path.getctime(os.path.join(reports_dir, file))
+                    })
+        
+        # Sort by creation date, newest first
+        reports.sort(key=lambda x: x['created'], reverse=True)
         
         return jsonify({
-            "success": True, 
-            "individual_report": individual_report,
-            "organization_report": org_report
+            "reports": reports,
+            "success": True
         })
     except Exception as e:
-        return jsonify({"error": f"Error running example: {str(e)}"}), 500
+        return jsonify({"error": f"Error fetching reports: {str(e)}"}), 500
+
+@app.route('/user-files', methods=['GET'])
+def user_files_api():
+    try:
+        user_id = request.args.get('user_id')
+        if not user_id:
+            return jsonify({"error": "User ID is required"}), 400
+        
+        # Look in multiple possible directories
+        document_paths = [
+            f"data/documents/{user_id}",
+            f"data/chat_documents/{user_id}",
+            f"data/uploaded_files/{user_id}"
+        ]
+        
+        files = []
+        for path in document_paths:
+            if os.path.exists(path):
+                for file_name in os.listdir(path):
+                    file_path = os.path.join(path, file_name)
+                    if os.path.isfile(file_path):
+                        files.append({
+                            "id": file_path,  # Use full path as ID
+                            "name": file_name
+                        })
+                
+        return jsonify({"files": files})
+    except Exception as e:
+        return jsonify({"error": f"Error listing user files: {str(e)}"}), 500
+
 
 @app.route('/process-document', methods=['POST'])
 def process_document_api():
     try:
-        data = request.get_json()
-        user_id = data.get('user_id')
+        user_id = request.form.get('user_id')
+        if not user_id:
+            return jsonify({"error": "User ID is required"}), 400
         
         if 'file' not in request.files:
             return jsonify({"error": "No file part"}), 400
@@ -161,8 +241,8 @@ def process_document_api():
         if file.filename == '':
             return jsonify({"error": "No selected file"}), 400
             
-        # Save uploaded file
-        document_path = f"data/documents/{secure_filename(file.filename)}"
+        # Save uploaded file - FIXED PATH HERE
+        document_path = f"data/documents/{user_id}/{secure_filename(file.filename)}"
         os.makedirs(os.path.dirname(document_path), exist_ok=True)
         file.save(document_path)
         
@@ -178,12 +258,18 @@ def get_advice_api():
         data = request.get_json()
         query = data.get('query')
         user_id = data.get('user_id')
+        document_path = data.get('document_path')
         
         if not query or not user_id:
             return jsonify({"error": "Query and user_id are required"}), 400
-            
-        response = get_financial_advice(query, user_id)
-        return jsonify({"response": response})
+        
+        # Call financial advisor with document context
+        response = get_financial_advice(query, user_id, document_path)
+        
+        return jsonify({
+            "response": response,
+            "sources": []  # Add source extraction logic if needed
+        })
     except Exception as e:
         return jsonify({"error": f"Error getting advice: {str(e)}"}), 500
 
@@ -202,8 +288,22 @@ def update_preferences_api():
     except Exception as e:
         return jsonify({"error": f"Error updating preferences: {str(e)}"}), 500
 
+# @app.route('/get-model-evaluation', methods=['POST'])
+# def model_evaluation_api():
+#     try:
+#         data = request.get_json()
+#         user_id = data.get('user_id')
+#         evaluation_data = data.get('evaluation_data')
+        
+#         if not user_id or not evaluation_data:
+#             return jsonify({"error": "User ID and evaluation data are required"}), 400
+        
+#         evaluation_result = get_model_evaluation(user_id, evaluation_data)
+#         return jsonify({"evaluation": evaluation_result})
+#     except Exception as e:
+#         return jsonify({"error": f"Error evaluating model: {str(e)}"}), 500
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
-
 
 

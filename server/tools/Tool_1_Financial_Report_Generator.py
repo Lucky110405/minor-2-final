@@ -16,6 +16,7 @@ from models.llm import OpenRouterLLM
 class FinancialState(TypedDict):
     data_source: Any  # File path, DataFrame, or stock symbol
     data_type: str  # "individual" or "organization"
+    report_id: Optional[str]  # Unique ID for the report
     raw_data: Optional[pd.DataFrame]
     stock_data: Optional[Dict[str, Any]]
     financial_metrics: Optional[Dict[str, Any]]
@@ -91,16 +92,32 @@ class FinancialReportGenerator:
         
         return metrics
     
-    def create_charts(self, output_dir="reports/charts"):
-        """Generate financial charts and save them."""
+    def create_charts(self, output_dir="reports/charts", report_id=None):
+        """Generate financial charts and save them.
+    
+        Args:
+            output_dir: Directory to save chart files
+            report_id: Unique identifier for this report's charts
+        """
         if self.data is None:
             raise ValueError("No data loaded.")
         
         os.makedirs(output_dir, exist_ok=True)
         charts_paths = {}
-        
+
+        # Generate a unique ID if not provided
+        if not report_id:
+            report_id = str(uuid4())[:8]
+            
+        # Use unique ID in filenames
+        prefix = f"{report_id}_" if report_id else ""
+
         if self.is_stock_data:
             # Stock price trend chart
+
+            chart_filename = f"{prefix}stock_price_trend.png"
+            chart_path = f"{output_dir}/{prefix}stock_price_trend.png"
+
             plt.figure(figsize=(10, 6))
             plt.plot(self.data["stock_data"]["history"].index, self.data["stock_data"]["history"]["Close"], marker='o', label='Close Price')
             plt.title(f'Stock Price Trend for {self.data["symbol"]}')
@@ -108,12 +125,16 @@ class FinancialReportGenerator:
             plt.ylabel('Price ($)')
             plt.grid(True)
             plt.legend()
-            chart_path = f"{output_dir}/stock_price_trend.png"
             plt.savefig(chart_path)
             plt.close()
-            charts_paths['stock_price_trend'] = chart_path
+
+            charts_paths['stock_price_trend'] = chart_filename
         else:
             # Revenue vs Expenses chart
+
+            chart_filename = f"{prefix}revenue_expenses_chart.png"
+            chart_path = f"{output_dir}/{prefix}revenue_expenses_chart.png"
+
             if all(col in self.data.columns for col in ['period', 'revenue', 'expenses']):
                 plt.figure(figsize=(10, 6))
                 plt.plot(self.data['period'], self.data['revenue'], marker='o', label='Revenue')
@@ -123,14 +144,14 @@ class FinancialReportGenerator:
                 plt.ylabel('Amount ($)')
                 plt.grid(True)
                 plt.legend()
-                chart_path = f"{output_dir}/revenue_expenses_chart.png"
                 plt.savefig(chart_path)
                 plt.close()
-                charts_paths['revenue_expenses'] = chart_path
+
+                charts_paths['revenue_expenses'] = chart_filename
         
         return charts_paths
     
-    def generate_pdf_report(self, metrics, analysis, charts_paths, output_path="reports/financial_report.pdf"):
+    def generate_pdf_report(self, metrics, analysis, charts_paths, output_dir="reports/charts", output_path="reports/financial_report.pdf"):
         """Generate a PDF financial report."""
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
         
@@ -184,10 +205,16 @@ class FinancialReportGenerator:
             pdf.cell(0, 10, "Financial Charts", ln=True)
             pdf.ln(5)
             
-            for chart_name, chart_path in charts_paths.items():
-                if os.path.exists(chart_path):
-                    pdf.image(chart_path, x=10, y=pdf.get_y(), w=190)
+            for chart_name, chart_filename in charts_paths.items():
+                # Construct full path from filename
+                full_chart_path = os.path.join(output_dir, chart_filename)
+                print(f"Adding chart to PDF: {full_chart_path}")
+                
+                if os.path.exists(full_chart_path):
+                    pdf.image(full_chart_path, x=10, y=pdf.get_y(), w=190)
                     pdf.ln(100)
+                else:
+                    print(f"WARNING: Chart file not found: {full_chart_path}")
         
         pdf.output(output_path)
         return output_path
@@ -202,8 +229,6 @@ def load_data_node(state: FinancialState) -> FinancialState:
     return state
 
 def analyze_data_node(state: FinancialState) -> FinancialState:
-    # 
-
     llm = OpenRouterLLM(api_key=os.getenv("OPENROUTER_GEMMA_API_KEY"), temperature=0.1)
     prompt = f"""
     You are a financial analyst. Analyze the following financial data:
@@ -220,7 +245,8 @@ def generate_charts_node(state: FinancialState) -> FinancialState:
     generator = FinancialReportGenerator()
     generator.data = state["raw_data"]
     generator.is_stock_data = state["data_type"] == "organization"
-    charts_paths = generator.create_charts()
+    # Use the report_id if it exists in the state
+    charts_paths = generator.create_charts(report_id=state.get("report_id"))
     state["charts_paths"] = charts_paths
     return state
 
@@ -228,10 +254,13 @@ def generate_report_node(state: FinancialState) -> FinancialState:
     generator = FinancialReportGenerator()
     generator.data = state["raw_data"]
     generator.is_stock_data = state["data_type"] == "organization"
+
     report_path = generator.generate_pdf_report(
         metrics=state["financial_metrics"],
         analysis=state["analysis"],
-        charts_paths=state["charts_paths"]
+        charts_paths=state["charts_paths"],
+        output_dir="reports/charts",  # Specify the charts directory
+        output_path=f"reports/{state.get('report_id', str(uuid4())[:8])}_{'organization' if state['data_type'] == 'organization' else 'user'}_report.pdf"
     )
     state["report_path"] = report_path
     return state
@@ -255,14 +284,31 @@ def build_workflow():
     return workflow.compile()
 
 # Main function to run the tool
-def generate_financial_report(data_source: Any, data_type: str) -> str:
+def generate_financial_report(data_source: Any, data_type: str, report_id=None) -> str:
+    """
+    Generate a financial report for the provided data source.
+    
+    Args:
+        data_source: The source data (stock symbol or file path)
+        data_type: Type of data ('individual' or 'organization')
+        report_id: Optional unique ID for the report (for chart file naming)
+        
+    Returns:
+        The path to the generated report
+    """
+
     if data_type not in ["individual", "organization"]:
         raise ValueError("data_type must be 'individual' or 'organization'")
     
+    # Generate a report ID if not provided
+    if not report_id:
+        report_id = str(uuid4())[:8]
+
     workflow = build_workflow()
     initial_state = FinancialState(
         data_source=data_source,
         data_type=data_type,
+        report_id=report_id,
         raw_data=None,
         stock_data=None,
         financial_metrics=None,
@@ -272,18 +318,3 @@ def generate_financial_report(data_source: Any, data_type: str) -> str:
     )
     result = workflow.invoke(initial_state)
     return result["report_path"]
-
-# Example usage
-if __name__ == "__main__":
-    # Example 1: Individual data (DataFrame)
-    sample_individual_data = pd.DataFrame({
-        'period': ['Jan', 'Feb', 'Mar', 'Apr'],
-        'revenue': [10000, 12000, 9500, 15000],
-        'expenses': [8000, 7500, 8200, 9000]
-    })
-    report_path = generate_financial_report(sample_individual_data, "individual")
-    print(f"Individual report generated at: {report_path}")
-    
-    # Example 2: Organizational data (stock symbol)
-    report_path = generate_financial_report("AAPL", "organization")
-    print(f"Organizational report generated at: {report_path}")

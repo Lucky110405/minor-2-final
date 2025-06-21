@@ -26,12 +26,13 @@ from unstructured.partition.auto import partition
 from langgraph.graph import StateGraph, END
 from models.embedding_model import EmbeddingModel
 from models.llm import OpenRouterLLM
+# from models.gemini_model import GeminiLLM
 from pinecone import Pinecone, ServerlessSpec
 from neo4j import GraphDatabase
 import spacy
 import matplotlib.pyplot as plt
 from uuid import uuid4
-from models.evaluation_model import evaluate_response
+# from models.evaluation_model import evaluate_response
 
 # Ensure necessary directories exist
 os.makedirs("data/documents", exist_ok=True)
@@ -52,6 +53,7 @@ class FinancialAdvisorState(TypedDict):
     relevant_facts: Optional[List[Dict[str, Any]]]
     user_profile: Optional[Dict[str, Any]]
     response: Optional[str]
+    evaluation: Optional[Dict[str, Any]]
 
 # Initialize NLP model for entity extraction
 try:
@@ -73,34 +75,49 @@ class PersonalizedFinancialAdvisor:
             raise
 
         try:
-            # Pinecone setup
+
             self.llm = OpenRouterLLM(api_key=os.getenv("OPENROUTER_GEMMA_API_KEY"), temperature=0.1)
+            # self.llm = GeminiLLM(api_key=os.getenv("GOOGLE_API_KEY"))
+
+            # Pinecone setup
+
             pc = Pinecone(api_key=os.getenv("PINECONE_API_KEY"))
             index_name = "financial-documents"
+
+            # Check if index exists
+            existing_indexes = pc.list_indexes().names()  # Get list of index names
+            print(f"Existing indexes: {existing_indexes}")
             
             # Create index if it doesn't exist
-            existing_indexes = pc.list_indexes()
             if index_name not in existing_indexes:
-                try:
-                    pc.create_index(
-                        name=index_name,
-                        dimension=768,
-                        metric="cosine"
-                    )
-                    print(f"Created new Pinecone index: {index_name}")
-                except Exception as e:
-                    print(f"Error creating Pinecone index: {str(e)}")
-                    # Continue anyway - index might exist but not be visible
+                print(f"Creating new index: {index_name}")
+                pc.create_index(
+                name=index_name,
+                dimension=768, # Replace with your model dimensions
+                metric="cosine", # Replace with your model metric
+                spec=ServerlessSpec(
+                    cloud="aws",
+                    region="us-east-1"
+                ) 
+            )
+            print(f"Created new Pinecone index: {index_name}")
+            # Wait for index to be ready
+            import time
+            time.sleep(10)
 
             # Connect to index
             self.vector_db = pc.Index(index_name)
+            # Test the connection
+            stats = self.vector_db.describe_index_stats()
+            print(f"Connected to index with stats: {stats}")
+
         except Exception as e:
             print(f"Error setting up Pinecone: {str(e)}")
             raise
 
         try:
             # Neo4j setup with proper error handling
-            self.neo4j_uri = os.getenv("NEO4J_URI", "bolt://localhost:7687")
+            self.neo4j_uri = os.getenv("NEO4J_URI")
             self.neo4j_user = os.getenv("NEO4J_USER", "neo4j")
             self.neo4j_password = os.getenv("NEO4J_PASSWORD")
             
@@ -320,7 +337,7 @@ class PersonalizedFinancialAdvisor:
             for entity in entities:
                 session.run(
                     """
-                    CREATE (e:Entity {
+                    MERGE (e:Entity {
                         id: $id,
                         text: $text,
                         type: $type,
@@ -430,7 +447,12 @@ class PersonalizedFinancialAdvisor:
 
     def get_user_profile(self, user_id: str) -> Dict[str, Any]:
         """Get user profile or create one if it doesn't exist"""
-        profile_path = f"data/user_profiles/{user_id}.json"
+        project_root = os.path.abspath(
+            os.path.join(os.path.dirname(__file__), os.pardir, os.pardir)
+        )
+        profiles_dir = os.path.join(project_root, "server", "data", "user_profiles")
+        os.makedirs(profiles_dir, exist_ok=True)
+        profile_path = os.path.join(profiles_dir, f"{user_id}.json")
         
         if os.path.exists(profile_path):
             with open(profile_path, 'r') as f:
@@ -522,7 +544,7 @@ class PersonalizedFinancialAdvisor:
         
         return profile
     
-    def retrieve_context(self, query: str, user_id: str, top_k: int = 5) -> Dict[str, Any]:
+    def retrieve_context(self, query: str, user_id: str, top_k: int = 50) -> Dict[str, Any]:
         """Retrieve relevant context using both Pinecone and Neo4j"""
         results = {
             "vector_contexts": [],
@@ -540,7 +562,17 @@ class PersonalizedFinancialAdvisor:
         
         # Extract text from results
         if vector_results and "matches" in vector_results:
-            results["vector_contexts"] = [match["metadata"]["text"] for match in vector_results["matches"]]
+            retrieved_contexts = [{"text": match["metadata"]["text"]} for match in vector_results["matches"]]
+            # Add deduplication to ensure variety in retrieved contexts
+            unique_contexts = []
+            seen = set()
+            for context in retrieved_contexts:
+                content = context['text']
+                if content not in seen:
+                    seen.add(content)
+                    unique_contexts.append(context)
+
+            results["vector_contexts"] = [ctx["text"] for ctx in unique_contexts]
         
         # Step 2: Search for relevant entities in Neo4j
         # Generate search terms from query
@@ -710,17 +742,18 @@ def generate_response_node(state: FinancialAdvisorState) -> FinancialAdvisorStat
         contexts
     )
 
-    # Fixed evaluation call with proper parameters
-    if state["relevant_contexts"]:
-        try:
-            evaluation_result = evaluate_response(
-                response=response, 
-                contexts=state["relevant_contexts"]
-            )
-            # Store evaluation result if needed
-            state["evaluation"] = evaluation_result
-        except Exception as e:
-            print(f"Error evaluating response: {str(e)}")
+    # # Fixed evaluation call with proper parameters
+    # if state["relevant_contexts"]:
+    #     try:
+    #         evaluation_result = evaluate_response(
+    #             query=state["query"],
+    #             response=response, 
+    #             contexts=state["relevant_contexts"]
+    #         )
+    #         # Store evaluation result if needed
+    #         state["evaluation"] = evaluation_result
+    #     except Exception as e:
+    #         print(f"Error evaluating response: {str(e)}")
     
     state["response"] = response
     return state
@@ -735,6 +768,9 @@ def build_workflow():
     workflow.add_node("retrieve_context", retrieve_context_node)
     workflow.add_node("generate_response", generate_response_node)
     
+    # Add a start node
+    workflow.add_node("start", lambda x: x)  # Identity function as placeholder
+
     # Add conditional edges based on whether we're processing a document or answering a query
     # Routing function determines first step
     def route_based_on_inputs(state: FinancialAdvisorState):
@@ -744,7 +780,7 @@ def build_workflow():
             return "retrieve_context"
     
     # Define edges
-    workflow.add_conditional_edges("", route_based_on_inputs, {
+    workflow.add_conditional_edges("start", route_based_on_inputs, {
         "process_document": "process_document",
         "retrieve_context": "retrieve_context"
     })
@@ -752,6 +788,9 @@ def build_workflow():
     workflow.add_edge("retrieve_context", "generate_response")
     workflow.add_edge("generate_response", END)
     
+    # Set entry point
+    workflow.set_entry_point("start")
+
     return workflow.compile()
 
 # Main functions to expose the functionality
@@ -764,26 +803,21 @@ def process_financial_document(document_path: str, user_id: str) -> Dict:
     advisor = PersonalizedFinancialAdvisor()
     return advisor.process_financial_document(document_path, user_id)  
 
-def get_financial_advice(query: str, user_id: str) -> str:
-    """Get personalized financial advice for a user query"""
+def get_financial_advice(query: str, user_id: str, document_path: str = None) -> str:
+    """Get financial advice based on user query and context"""
+    advisor = PersonalizedFinancialAdvisor()
+    
+    # Initialize state
+    state = {
+        "user_id": user_id,
+        "query": query,
+        "document_path": document_path,  # This could be None if no document specified
+    }
+    
+    # Run workflow
     workflow = build_workflow()
+    result = workflow.invoke(state)
     
-    initial_state = FinancialAdvisorState(
-        user_id=user_id,
-        query=query,
-        document_path=None,  # No document for query answering
-        chunks=None,
-        entities=None,
-        relationships=None,
-        knowledge_graph=None,
-        knowledge_graph_id=None,  # Added this field
-        relevant_contexts=None,
-        relevant_facts=None,
-        user_profile=None,
-        response=None
-    )
-    
-    result = workflow.invoke(initial_state)
     return result["response"]
 
 # Fix 6: Add data validation to update_user_preferences
@@ -814,3 +848,9 @@ def update_user_preferences(user_id: str, preferences: Dict[str, Any]) -> Dict[s
     with open(profile_path, 'w') as f:
         json.dump(profile, f, indent=2)
     return profile
+
+# def get_model_evaluation(query: str, response: str, contexts: List[str]) -> Dict[str, Any]:
+#     """Evaluate the model's response based on the provided contexts"""
+#     # Placeholder for evaluation logic
+#     evaluation_result = evaluate_response(query, response, contexts)
+#     return evaluation_result
