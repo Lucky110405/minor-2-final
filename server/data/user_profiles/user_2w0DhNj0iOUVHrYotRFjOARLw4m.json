@@ -1,39 +1,25 @@
 {
   "user_id": "user_2w0DhNj0iOUVHrYotRFjOARLw4m",
-  "risk_tolerance": "Unknown",
+  "risk_tolerance": "Moderate",
   "financial_goals": [
-    "Financial security",
+    "Analyze financial data",
+    "Determine next steps",
     "investment",
     "Investment",
-    "Determine next steps",
-    "retirement",
+    "Determine total revenue",
+    "Tax Optimization",
     "Retirement",
-    "Analyze financial data",
     "Identify concerning trends",
-    "Determine total revenue"
+    "retirement",
+    "Financial security"
   ],
   "investment_horizon": "long-term",
   "preferences": {
-    "sustainability": 0.22359579061569027,
-    "technology": 0.25296159336588886,
-    "healthcare": 0.2382615933658888
+    "sustainability": 0.3065170534309832,
+    "technology": 0.1770731153561222,
+    "healthcare": 0.16678311535612217
   },
   "interaction_history": [
-    {
-      "query": "Are there any concerning trends in my finances?",
-      "timestamp": "2025-04-25T20:45:12.441210",
-      "response_summary": "\nBased solely on the provided context \u2013 which repeatedly emphasizes the importance of analyzing hist..."
-    },
-    {
-      "query": "Are there any concerning trends in my finances?",
-      "timestamp": "2025-04-25T21:16:27.485432",
-      "response_summary": "\nBased solely on the repeated emphasis on \u201cexpenses based on historical data and anticipated changes..."
-    },
-    {
-      "query": "Are there any concerning trends in my finances?",
-      "timestamp": "2025-04-25T21:26:50.487813",
-      "response_summary": "\nBased solely on the provided context \u2013 which repeatedly emphasizes the importance of analyzing hist..."
-    },
     {
       "query": "Are there any concerning trends in my finances?",
       "timestamp": "2025-04-25T21:32:57.581163",
@@ -118,6 +104,21 @@
       "query": "Based on my finances, what stocks should I invest in?",
       "timestamp": "2025-05-14T11:57:36.790293",
       "response_summary": "\nOkay, based on your profile \u2013 a moderate risk tolerance, long-term investment horizon, and preferen..."
+    },
+    {
+      "query": "What investment strategies should I consider based on my risk profile?",
+      "timestamp": "2025-06-22T12:53:23.450428",
+      "response_summary": "Okay, based on the information we have, let\u2019s discuss investment strategies.\n\nCurrently, we don\u2019t ha..."
+    },
+    {
+      "query": "How should I allocate my retirement portfolio?",
+      "timestamp": "2025-06-22T12:56:17.941233",
+      "response_summary": "\n\nOkay, let\u2019s discuss how to allocate your retirement portfolio, considering your moderate risk tole..."
+    },
+    {
+      "query": "What are the tax implications of selling my stock investments?",
+      "timestamp": "2025-06-22T12:59:03.524336",
+      "response_summary": "\n\nOkay, let\u2019s address the tax implications of selling your stock investments, considering your moder..."
     }
   ]
 }

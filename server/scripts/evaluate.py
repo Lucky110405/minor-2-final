@@ -1,7 +1,7 @@
 import os
 import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
+import time
 from models.evaluation_model import evaluate_response
 from tools.personalized_financial_advisor import PersonalizedFinancialAdvisor
 from utils.token_counter import estimate_tokens_from_context
@@ -17,52 +17,56 @@ MODEL_CONTEXT_TOKEN_RATE = 0.02 / 1_000_000  # Per token
 MODEL_RESPONSE_TOKEN_RATE = 0.04 / 1_000_000 # Per token
 # --- END TOKEN COST CONFIGURATION ---
 
-def evaluate_financial_advice(query: str, user_id: str):
-    """Get and evaluate a response from the financial advisor"""
-    # 1. Create advisor instance
-    advisor = PersonalizedFinancialAdvisor()
-    
-    # 2. Get context from the advisor's retrieve_context method
-    contexts_dict = advisor.retrieve_context(query, user_id, top_k=50)
-    
-    # 3. Get vector contexts (these are the text chunks from documents)
-    vector_contexts = contexts_dict.get("vector_contexts", [])
-    
-    # 4. Format the contexts dictionary for generating a response
-    formatted_contexts = {
-        "vector_contexts": vector_contexts,
-        "graph_facts": contexts_dict.get("graph_facts", [])
-    }
-    
-    # 5. Generate a response based on the query and contexts
-    response = advisor.generate_personalized_response(query, user_id, formatted_contexts)
-    
-    # 6. Run the evaluation
-    print(f"Query: {query}")
-    print(f"Response: {response[:100]}...")  # Show first 100 chars of response
-    
-    evaluation_results = evaluate_response(query, response, vector_contexts)
 
-    # 7. Estimate token usage
-    # Add token counting after response generation
-    token_usage = estimate_tokens_from_context(vector_contexts, query, response)
+
+# def evaluate_financial_advice(query: str, user_id: str):
+#     """Get and evaluate a response from the financial advisor"""
+#     # 1. Create advisor instance
+#     advisor = PersonalizedFinancialAdvisor()
     
-    print(f"Token usage - Context: {token_usage['context_tokens']}, " 
-          f"Query: {token_usage['query_tokens']}, "
-          f"Response: {token_usage['response_tokens']}")
+#     # 2. Get context from the advisor's retrieve_context method
+#     contexts_dict = advisor.retrieve_context(query, user_id, top_k=50)
     
-    return {
-        "query": query,
-        "response": response,
-        "contexts": vector_contexts,
-        "evaluation": evaluation_results,
-        "token_usage": token_usage
-    }
+#     # 3. Get vector contexts (these are the text chunks from documents)
+#     vector_contexts = contexts_dict.get("vector_contexts", [])
+    
+#     # 4. Format the contexts dictionary for generating a response
+#     formatted_contexts = {
+#         "vector_contexts": vector_contexts,
+#         "graph_facts": contexts_dict.get("graph_facts", [])
+#     }
+    
+#     # 5. Generate a response based on the query and contexts
+#     response = advisor.generate_personalized_response(query, user_id, formatted_contexts)
+    
+#     # 6. Run the evaluation
+#     print(f"Query: {query}")
+#     print(f"Response: {response[:100]}...")  # Show first 100 chars of response
+    
+#     evaluation_results = evaluate_response(query, response, vector_contexts)
+
+#     # 7. Estimate token usage
+#     # Add token counting after response generation
+#     token_usage = estimate_tokens_from_context(vector_contexts, query, response)
+    
+#     print(f"Token usage - Context: {token_usage['context_tokens']}, " 
+#           f"Query: {token_usage['query_tokens']}, "
+#           f"Response: {token_usage['response_tokens']}")
+    
+#     return {
+#         "query": query,
+#         "response": response,
+#         "contexts": vector_contexts,
+#         "evaluation": evaluation_results,
+#         "token_usage": token_usage
+#     }
 
 
 def run_comprehensive_evaluation(user_id: str):
     """Run evaluation on multiple diverse financial queries"""
-    
+    # 1) Instantiate once
+    advisor = PersonalizedFinancialAdvisor()
+
     # Define a diverse set of financial queries covering different aspects
     test_queries = [
         "What investment strategies should I consider based on my risk profile?",
@@ -77,14 +81,28 @@ def run_comprehensive_evaluation(user_id: str):
 
     # Store all results
     all_results = []
-    import time
     
     # Evaluate each query
     for i, query in enumerate(test_queries):
         print(f"\n--- Evaluating Query {i+1}/{len(test_queries)}: {query} ---")
         try:
-            result = evaluate_financial_advice(query, user_id)
-            all_results.append(result)
+            # 2) Reuse the same advisor
+            contexts = advisor.retrieve_context(query, user_id, top_k=50)
+            response = advisor.generate_personalized_response(query, user_id, {
+                "vector_contexts": contexts["vector_contexts"],
+                "graph_facts": contexts["graph_facts"]
+            })
+
+            evaluation_results = evaluate_response(query, response, contexts["vector_contexts"])
+            token_usage = estimate_tokens_from_context(contexts["vector_contexts"], query, response)
+
+            all_results.append({
+                "query": query,
+                "response": response,
+                "contexts": contexts["vector_contexts"],
+                "evaluation": evaluation_results,
+                "token_usage": token_usage
+            })
             
             # Add a significant delay between queries
             if i < len(test_queries) - 1:
@@ -155,7 +173,10 @@ def run_comprehensive_evaluation(user_id: str):
         "avg_tokens_per_query": df["total_tokens"].mean(skipna=True),
         "avg_context_tokens": df["context_tokens"].mean(skipna=True),
         "avg_response_tokens": df["response_tokens"].mean(skipna=True),
-        "max_tokens_query": df["total_tokens"].max(skipna=True)
+        "max_tokens_query": df["total_tokens"].max(skipna=True),
+        "context_cost": df["context_tokens"].sum() * MODEL_CONTEXT_TOKEN_RATE,
+        "response_cost": df["response_tokens"].sum() * MODEL_RESPONSE_TOKEN_RATE,
+        "total_token_cost": (df["context_tokens"].sum(skipna=True) * MODEL_CONTEXT_TOKEN_RATE + df["response_tokens"].sum(skipna=True) * MODEL_RESPONSE_TOKEN_RATE)
     }
     
     # Create visualization
