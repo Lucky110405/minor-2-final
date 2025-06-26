@@ -304,6 +304,17 @@ def update_preferences_api():
 #         return jsonify({"error": f"Error evaluating model: {str(e)}"}), 500
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    # Production configuration
+    port = int(os.environ.get("PORT", 5000))
+    debug_mode = os.environ.get("FLASK_ENV") != "production"
+    
+    # Update CORS for production
+    app.config['CORS_ORIGINS'] = [
+        "https://your-frontend.vercel.app",
+        "https://portfolio.mlucky.me",
+        "http://localhost:3000"
+    ]
+    
+    app.run(host="0.0.0.0", port=port, debug=debug_mode)
 
 
