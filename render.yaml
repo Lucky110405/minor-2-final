@@ -4,8 +4,8 @@ services:
     env: python
     region: oregon
     runtime: python-3.11.8 
-    buildCommand: pip install -r requirements.txt
-    startCommand: python main.py
+    buildCommand: pip install -r server/requirements.txt
+    startCommand: python server/main.py
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.8
