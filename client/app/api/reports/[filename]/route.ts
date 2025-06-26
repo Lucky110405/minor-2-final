@@ -3,7 +3,7 @@ import { auth } from '@clerk/nextjs/server';
 
 export async function GET(
   request: Request,
-  { params }: { params: { filename: string } }
+  { params }: { params: Promise<{ filename: string }> }
 ) {
   try {
     // Get authenticated user
@@ -14,7 +14,7 @@ export async function GET(
     }
     
     // Access the filename parameter
-    const { filename } = params;
+    const { filename } = await params;
     console.log(`Fetching report: ${filename}`);
     
     // Fetch the report file from the Flask backend
