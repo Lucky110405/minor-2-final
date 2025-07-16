@@ -20,19 +20,37 @@ class OpenRouterLLM:
         }
         self.temperature = temperature
 
-    def __call__(self, prompt):
+    def __call__(self, prompt, image_url=None):
         # Convert PromptValue to string if needed
         if hasattr(prompt, 'to_string'):
             prompt = prompt.to_string()
         
         try:
-            print(f"Sending request to API...")
+            print(f"Sending request to OpenRouter API...")
+
+            # Build message content
+            message_content = []
+
+            message_content.append({
+                "type": "text",
+                "text": str(prompt)
+            })
+
+            if image_url:
+                message_content.append({
+                    "type": "image_url",
+                    "image_url": {
+                        "url": image_url
+                    }
+                })
+
+
             response = requests.post(
                 f"{BASE_URL}/chat/completions",
                 headers=self.headers,
                 json={
-                    "model": "google/gemma-3-4b-it:free",
-                    "messages": [{"role": "user", "content": str(prompt)}],
+                    "model": "mistralai/mistral-small-3.2-24b-instruct:free",
+                    "messages": [{"role": "user", "content": message_content}],
                     "temperature": self.temperature,
                     "max_tokens": 1000,
                     "stream": False
@@ -40,11 +58,11 @@ class OpenRouterLLM:
             )
 
             # Print response for debugging
-            print(f"API Response Status: {response.status_code}")
-            
+            print(f"OpenRouter API Response Status: {response.status_code}")
+
             # Add response validation
             if response.status_code != 200:
-                print(f"API Error: {response.status_code} - {response.text}")
+                print(f"OpenRouter API Error: {response.status_code} - {response.text}")
                 return "Sorry, there was an error with the API request."
                 
             response_json = response.json()

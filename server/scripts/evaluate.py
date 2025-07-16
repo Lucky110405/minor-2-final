@@ -13,10 +13,12 @@ from datetime import datetime
 
 # --- TOKEN COST CONFIGURATION ---
 # Example: If rates are $0.02/1M input tokens and $0.04/1M output tokens
-MODEL_CONTEXT_TOKEN_RATE = 0.02 / 1_000_000  # Per token
-MODEL_RESPONSE_TOKEN_RATE = 0.04 / 1_000_000 # Per token
+MODEL_CONTEXT_TOKEN_RATE = 0.05 / 1_000_000  # Per token
+MODEL_RESPONSE_TOKEN_RATE = 0.10 / 1_000_000 # Per token
 # --- END TOKEN COST CONFIGURATION ---
 
+JUDGE_NAME = "gemini-1.5-flash"
+LLM_NAME = "mistralai/mistral-small-3.2-24b-instruct:free"
 
 
 # def evaluate_financial_advice(query: str, user_id: str):
@@ -156,6 +158,8 @@ def run_comprehensive_evaluation(user_id: str):
     
     # Calculate summary statistics, handling potential NaNs if some evaluations failed
     summary_stats = {
+        "judge" : JUDGE_NAME,
+        "LLM" : LLM_NAME,
         "avg_faithfulness": df["faithfulness"].mean(skipna=True),
         "avg_hallucination": df["hallucination"].mean(skipna=True),
         "avg_answer_relevance": df["answer_relevance"].mean(skipna=True),

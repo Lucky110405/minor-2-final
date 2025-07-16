@@ -1,3 +1,7 @@
+import os
+import google.generativeai as genai
+from google.generativeai.generative_models import GenerativeModel
+from google.generativeai.client import configure
 from deepeval.test_case import LLMTestCase
 from deepeval.metrics import (
     FaithfulnessMetric,
@@ -7,12 +11,10 @@ from deepeval.metrics import (
 )
 from deepeval.models.base_model import DeepEvalBaseLLM
 from pydantic import BaseModel
-import google.generativeai as genai
 import instructor
 # from models.gemini_model import model
 from typing import Dict, List, Union, Any
 import asyncio
-import os
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -143,15 +145,15 @@ load_dotenv()
 # eval_model = EvalModel(model=model)
 
 #  using a custom gemini-1.5-flash llm through Vertex AI for evaluation
-genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+configure(api_key=os.getenv("GOOGLE_API_KEY"))
 class CustomGeminiFlash(DeepEvalBaseLLM):
     def __init__(self):
-        self.model = genai.GenerativeModel(model_name="models/gemini-1.5-flash")
+        self.model = GenerativeModel(model_name="models/gemini-1.5-flash")
 
     def load_model(self):
         return self.model
 
-    def generate(self, prompt: str, schema: BaseModel) -> BaseModel:
+    def generate(self, prompt: str, schema: type[BaseModel]) -> BaseModel:
         client = self.load_model()
         instructor_client = instructor.from_gemini(
             client=client,
@@ -168,7 +170,7 @@ class CustomGeminiFlash(DeepEvalBaseLLM):
         )
         return resp
 
-    async def a_generate(self, prompt: str, schema: BaseModel) -> BaseModel:
+    async def a_generate(self, prompt: str, schema: type[BaseModel]) -> BaseModel:
         return self.generate(prompt, schema)
 
     def get_model_name(self):
@@ -194,13 +196,13 @@ def evaluate_response(query: str, response: str, contexts: List[str]) -> Dict:
     faithfulness_metric = FaithfulnessMetric(threshold=0.7,model=eval_model,include_reason=True)
     hallucination_metric = HallucinationMetric(threshold=0.7,model=eval_model)
     answer_relevancy_metric = AnswerRelevancyMetric(threshold=0.7,model=eval_model,include_reason=True)
-    contextual_relevancy_metric = ContextualRelevancyMetric(threshold=0.7,model=eval_model,include_reason=True)
+    # contextual_relevancy_metric = ContextualRelevancyMetric(threshold=0.7,model=eval_model,include_reason=True)
 
     # Evaluate metrics individually
     faithfulness_metric.measure(test_case)
     hallucination_metric.measure(test_case)
     answer_relevancy_metric.measure(test_case)
-    contextual_relevancy_metric.measure(test_case)
+    # contextual_relevancy_metric.measure(test_case)
 
     # Return combined results
     return {
@@ -215,9 +217,10 @@ def evaluate_response(query: str, response: str, contexts: List[str]) -> Dict:
         "answer_relevancy": {
             "score": answer_relevancy_metric.score,
             "reason": answer_relevancy_metric.reason
-        },
-        "contextual_relevancy": {
-            "score": contextual_relevancy_metric.score,
-            "reason": contextual_relevancy_metric.reason
         }
+        # ,
+        # "contextual_relevancy": {
+        #     "score": contextual_relevancy_metric.score,
+        #     "reason": contextual_relevancy_metric.reason
+        # }
     }
