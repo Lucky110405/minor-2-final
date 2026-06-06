@@ -229,7 +229,7 @@ def load_data_node(state: FinancialState) -> FinancialState:
     return state
 
 def analyze_data_node(state: FinancialState) -> FinancialState:
-    llm = OpenRouterLLM(api_key=os.getenv("OPENROUTER_GEMMA_API_KEY"), temperature=0.1)
+    llm = OpenRouterLLM(api_key=os.getenv("OPENROUTER_GEMMA_API_KEY"), temperature=0)
     prompt = f"""
     You are a financial analyst. Analyze the following financial data:
     Data Type: {state["data_type"]}

@@ -49,7 +49,7 @@ class OpenRouterLLM:
                 f"{BASE_URL}/chat/completions",
                 headers=self.headers,
                 json={
-                    "model": "mistralai/mistral-small-3.2-24b-instruct:free",
+                    "model": "google/gemma-3-4b-it:free",
                     "messages": [{"role": "user", "content": message_content}],
                     "temperature": self.temperature,
                     "max_tokens": 1000,
