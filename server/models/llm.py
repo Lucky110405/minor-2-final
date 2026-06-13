@@ -7,7 +7,7 @@ import requests
 load_dotenv()
 
 # Configuration
-OPENROUTER_GEMMA_API_KEY = os.getenv("OPENROUTER_GEMMA_API_KEY")
+api_key = os.getenv("OPENROUTER_API_KEY")
 BASE_URL="https://openrouter.ai/api/v1"
 
 class OpenRouterLLM:
@@ -49,7 +49,7 @@ class OpenRouterLLM:
                 f"{BASE_URL}/chat/completions",
                 headers=self.headers,
                 json={
-                    "model": "google/gemma-3-4b-it:free",
+                    "model": "google/gemma-4-31b-it:free",
                     "messages": [{"role": "user", "content": message_content}],
                     "temperature": self.temperature,
                     "max_tokens": 1000,

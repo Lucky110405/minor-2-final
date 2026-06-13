@@ -76,7 +76,7 @@ class PersonalizedFinancialAdvisor:
 
         try:
 
-            self.llm = OpenRouterLLM(api_key=os.getenv("OPENROUTER_GEMMA_API_KEY"), temperature=0.1)
+            self.llm = OpenRouterLLM(api_key=os.getenv("OPENROUTER_API_KEY"), temperature=0.1)
             # self.llm = GeminiLLM(api_key=os.getenv("GOOGLE_API_KEY"))
 
             # Pinecone setup

@@ -12,7 +12,7 @@ export async function POST(req: Request) {
     const { query, document_path } = body;
 
     // Call Flask backend
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/get-advice`, {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/get-advice`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
